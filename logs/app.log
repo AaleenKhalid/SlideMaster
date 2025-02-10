@@ -1,0 +1,60 @@
+2025-02-06 13:42:27,025 [WARNING]  * Debugger is active!
+2025-02-06 13:42:27,035 [INFO]  * Debugger PIN: 416-366-445
+2025-02-06 13:43:14,804 [INFO]  * Detected change in 'C:\\SideMasterFYP\\SlideMaster\\backend\\routes\\slide_routes.py', reloading
+2025-02-06 13:43:16,932 [WARNING]  * Debugger is active!
+2025-02-06 13:43:16,932 [INFO]  * Debugger PIN: 416-366-445
+2025-02-06 13:43:52,761 [INFO]  * Detected change in 'C:\\SideMasterFYP\\SlideMaster\\backend\\routes\\slide_routes.py', reloading
+2025-02-06 13:43:54,537 [WARNING]  * Debugger is active!
+2025-02-06 13:43:54,541 [INFO]  * Debugger PIN: 416-366-445
+2025-02-06 13:45:37,856 [INFO]  * Detected change in 'C:\\SideMasterFYP\\SlideMaster\\backend\\routes\\slide_routes.py', reloading
+2025-02-06 13:45:39,805 [WARNING]  * Debugger is active!
+2025-02-06 13:45:39,821 [INFO]  * Debugger PIN: 416-366-445
+2025-02-06 13:45:50,993 [INFO] Received a request to generate slide content.
+2025-02-06 13:45:50,994 [INFO] Processing Prompt
+2025-02-06 13:45:50,994 [INFO] 127.0.0.1 - - [06/Feb/2025 13:45:50] "[31m[1mPOST /api/slides/generate HTTP/1.1[0m" 400 -
+2025-02-06 13:45:53,053 [INFO] Received a request to generate slide content.
+2025-02-06 13:45:53,055 [INFO] Processing Prompt
+2025-02-06 13:45:53,055 [INFO] 127.0.0.1 - - [06/Feb/2025 13:45:53] "[31m[1mPOST /api/slides/generate HTTP/1.1[0m" 400 -
+2025-02-06 13:45:55,098 [INFO] Received a request to generate slide content.
+2025-02-06 13:45:55,101 [INFO] Processing Prompt
+2025-02-06 13:45:59,449 [INFO] Markdown content received.
+2025-02-06 13:45:59,449 [INFO] Markdown successfully generated.
+2025-02-06 13:45:59,450 [INFO] 127.0.0.1 - - [06/Feb/2025 13:45:59] "POST /api/slides/generate HTTP/1.1" 200 -
+2025-02-06 13:46:31,125 [INFO]  * Detected change in 'C:\\SideMasterFYP\\SlideMaster\\backend\\tests\\test_slide_generation.py', reloading
+2025-02-06 13:46:35,108 [WARNING]  * Debugger is active!
+2025-02-06 13:46:35,111 [INFO]  * Debugger PIN: 416-366-445
+2025-02-06 15:36:58,351 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-02-06 15:36:58,351 [INFO] [33mPress CTRL+C to quit[0m
+2025-02-06 15:36:58,351 [INFO]  * Restarting with stat
+2025-02-06 15:36:59,290 [WARNING]  * Debugger is active!
+2025-02-06 15:36:59,306 [INFO]  * Debugger PIN: 416-366-445
+2025-02-10 11:33:54,965 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-02-10 11:33:54,966 [INFO] [33mPress CTRL+C to quit[0m
+2025-02-10 11:33:54,969 [INFO]  * Restarting with stat
+2025-02-10 11:33:56,550 [WARNING]  * Debugger is active!
+2025-02-10 11:33:56,558 [INFO]  * Debugger PIN: 416-366-445
+2025-02-10 11:41:57,861 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-02-10 11:41:57,862 [INFO] [33mPress CTRL+C to quit[0m
+2025-02-10 11:41:57,865 [INFO]  * Restarting with stat
+2025-02-10 11:41:59,536 [WARNING]  * Debugger is active!
+2025-02-10 11:41:59,543 [INFO]  * Debugger PIN: 416-366-445
+2025-02-10 11:46:01,930 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-02-10 11:46:01,930 [INFO] [33mPress CTRL+C to quit[0m
+2025-02-10 11:46:01,936 [INFO]  * Restarting with stat
+2025-02-10 11:46:03,440 [WARNING]  * Debugger is active!
+2025-02-10 11:46:03,450 [INFO]  * Debugger PIN: 416-366-445
+2025-02-10 11:46:44,901 [INFO] 127.0.0.1 - - [10/Feb/2025 11:46:44] "OPTIONS /api/slides/generate HTTP/1.1" 200 -
+2025-02-10 11:47:18,216 [INFO] 127.0.0.1 - - [10/Feb/2025 11:47:18] "OPTIONS /api/slides/generate HTTP/1.1" 200 -
+2025-02-10 12:06:59,460 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-02-10 12:06:59,469 [INFO] [33mPress CTRL+C to quit[0m
+2025-02-10 12:06:59,471 [INFO]  * Restarting with stat
+2025-02-10 12:07:01,133 [WARNING]  * Debugger is active!
+2025-02-10 12:07:01,151 [INFO]  * Debugger PIN: 416-366-445
+2025-02-10 12:07:29,376 [INFO] 127.0.0.1 - - [10/Feb/2025 12:07:29] "OPTIONS /api/slides/generate HTTP/1.1" 200 -
+2025-02-10 12:07:29,627 [INFO] Received a request to generate slide content.
+2025-02-10 12:07:29,631 [INFO] 127.0.0.1 - - [10/Feb/2025 12:07:29] "[31m[1mPOST /api/slides/generate HTTP/1.1[0m" 400 -
