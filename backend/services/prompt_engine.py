@@ -38,5 +38,6 @@ class PromptEngine:
         - Include bullet points for key information
         - Ensure content is well-structured and professional
         - Include an introduction and conclusion section
+        - Separate the content for each slide using a slide number 
         """
         return formatted_prompt
