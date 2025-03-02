@@ -21,8 +21,8 @@
             isLoading = false;
         }
     }
-
-    $: parsedMarkdown = generatedMarkdown ? marked(generatedMarkdown) : '';
+    // $ means it's a reactive statement
+    $: parsedMarkdown = generatedMarkdown ? marked(generatedMarkdown) : ''; // converting markdown to HTML using marked()
 </script>
 
 <div class="prompt-form">
