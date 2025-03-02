@@ -1,6 +1,6 @@
 flask
 flask-cors
-google-generativeai
+ollama
 python-dotenv
 requests
 unittest

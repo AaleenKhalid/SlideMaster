@@ -35,7 +35,7 @@
         ></textarea>
 
         <button type="submit" disabled={isLoading}>
-            {isLoading ? 'Generating...' : 'Generate Slides'}
+            {isLoading ? 'Generating...' : 'Generate Slides with Gemma2'}
         </button>
     </form>
 

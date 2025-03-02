@@ -1,8 +1,8 @@
-const API_URL = 'http://localhost:5000/api/slides/generate';
+const API_URL = 'http://localhost:5000/api/slides';
 
 export async function generateSlides(prompt) {
     try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(`${API_URL}/generate`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -16,13 +16,8 @@ export async function generateSlides(prompt) {
             throw new Error(errorData.message || 'Failed to generate slides');
         }
 
-        const data = await response.json();
+        return response.json();
 
-        if (!data.markdown) {
-            throw new Error('No markdown content received');
-        }
-
-        return data;
     } catch (error) {
         console.error('API Error:', error);
         throw new Error(error.message || 'Failed to generate slides');
