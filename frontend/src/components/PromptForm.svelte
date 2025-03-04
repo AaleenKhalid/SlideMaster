@@ -2,10 +2,16 @@
     import { generateSlides } from '$lib/api.js';
     import { marked } from 'marked';
 
-    let prompt = '';
+    //let prompt = '';
     let generatedMarkdown = '';
     let error = '';
     let isLoading = false;
+    let slideDeckLength = '';
+    let detailLevel = '';
+    let textTone = '';
+    let topicHeading = '';
+    let keyPoints = ''; // TODO - might need to update structure
+
 
     async function handleSubmit() {
         error = '';
@@ -27,12 +33,15 @@
 
 <div class="prompt-form">
     <form on:submit|preventDefault={handleSubmit}>
+
+
         <textarea
-                bind:value={prompt}
+                bind:value={keyPoints}
                 placeholder="Enter your slide deck requirements..."
                 rows="4"
                 required
         ></textarea>
+
 
         <button type="submit" disabled={isLoading}>
             {isLoading ? 'Generating...' : 'Generate Slides with Gemma2'}
