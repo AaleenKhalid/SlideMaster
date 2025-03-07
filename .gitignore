@@ -48,7 +48,6 @@ node_modules/
 .DS_Store
 
 # Ollama model files
-# (if you're storing any model files locally)
 *.bin
 *.gguf
 /models/
