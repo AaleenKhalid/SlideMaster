@@ -23,36 +23,37 @@
         ],
 
         detailLevel: [
-            { value: 'simple', label: 'Simple' },
-            { value: 'detailed', label: 'Detailed' },
+            { value: 'brief', label: 'Brief', description: 'Key points only' },
+            { value: 'standard', label: 'Standard', description: 'Balanced content' },
+            { value: 'detailed', label: 'Detailed', description: 'In-depth content' }
         ],
 
         textTone: [
-            { value: 'formal', label: 'Formal' },
-            { value: 'casual', label: 'Casual' },
-            { value: 'academic', label: 'Academic' },
+            { value: 'formal', label: 'Formal', description: 'More Professional' },
+            { value: 'casual', label: 'Casual', description: 'Conversational style'},
+            { value: 'academic', label: 'Academic', description: 'Teaching, research-style' },
         ]
     };
 
-    // Have active option section
-    let activeOption = 'slideDeckLength';
-
-    function setActiveOption(option) {
-        activeOption = option;
-    }
-
-    function selectOption(setting, value) {
-        if (setting === 'slideDeckLength') slideDeckLength = value;
-        if (setting === 'detailLevel') detailLevel = value;
-        if (setting === 'textTone') textTone = textTone;
-    }
-
-    function getSelectedLabel(setting) {
-        const selected = options[setting].find(opt =>
-            opt.value === (setting === 'slideDeckLength') ? slideDeckLength : setting === 'detailLevel' ? detailLevel : textTone);
-
-        return selected ? selected.label : '';
-    }
+    // // Have active option section
+    // let activeOption = 'slideDeckLength';
+    //
+    // function setActiveOption(option) {
+    //     activeOption = option;
+    // }
+    //
+    // function selectOption(setting, value) {
+    //     if (setting === 'slideDeckLength') slideDeckLength = value;
+    //     if (setting === 'detailLevel') detailLevel = value;
+    //     if (setting === 'textTone') textTone = textTone;
+    // }
+    //
+    // function getSelectedLabel(setting) {
+    //     const selected = options[setting].find(opt =>
+    //         opt.value === (setting === 'slideDeckLength') ? slideDeckLength : setting === 'detailLevel' ? detailLevel : textTone);
+    //
+    //     return selected ? selected.label : '';
+    // }
 
 
     async function handleSubmit() {
@@ -61,12 +62,19 @@
         isLoading = true;
 
         try {
+            const prompt = {
+                keyPoints,
+                topicHeading,
+                slideDeckLength,
+                detailLevel,
+                textTone
+            };
 
-            prompt = 'Topic heading will be: ' + topicHeading + '\n' +
-                'Key Points you need to cover are: ' + keyPoints + '\n' +
-                'There should be ' + slideDeckLength + ' slides.' + '\n' +
-                'The content should have a ' + textTone + ' tone' + '\n' +
-                'The content should be ' + detailLevel;
+            // prompt = 'Topic heading will be: ' + topicHeading + '\n' +
+            //     'Key Points you need to cover are: ' + keyPoints + '\n' +
+            //     'There should be ' + slideDeckLength + ' slides.' + '\n' +
+            //     'The content should have a ' + textTone + ' tone' + '\n' +
+            //     'The content should be ' + detailLevel;
 
             const response = await generateSlides(prompt);
             generatedMarkdown = response.markdown;
@@ -94,88 +102,68 @@
         </div>
 
         <div class="form-group">
-        <label for="keyPoints">Key Points/Requirements</label>
+            <label for="keyPoints">Key Points/Requirements</label>
             <textarea
                     bind:value={keyPoints}
                     placeholder="Enter your slide deck requirements..."
-                    rows="5"
+                    rows="4"
                     required
             ></textarea>
         </div>
 
-        <div class="carousel-container">
-            <div class="tabs">
-                <button
-                        type="button"
-                        class:active={activeOption === 'slideDeckLength'}
-                        on:click={() => setActiveOption('slideDeckLength')}
-                >
-                    Length: {getSelectedLabel('slideDeckLength')}
-                </button>
-                <button
-                        type="button"
-                        class:active={activeOption === 'detailLevel'}
-                        on:click={() => setActiveOption('detailLevel')}
-                >
-                    Detail: {getSelectedLabel('detailLevel')}
-                </button>
-                <button
-                        type="button"
-                        class:active={activeOption === 'textTone'}
-                        on:click={() => setActiveOption('textTone')}
-                >
-                    Tone: {getSelectedLabel('textTone')}
-                </button>
+        <div class="requirement-selection">
+            <div class="option-group">
+                <h3>Slide Deck Length</h3>
+                <div class="card-options">
+                    {#each options.slideDeckLength as option}
+                        <div
+                            class="option-card"
+                            class:selected={slideDeckLength === option.value}
+                            on:click={() => slideDeckLength = option.value}
+                        >
+                            <div class="card-header">{option.label}</div>
+                            <div class="card-description">{option.description}</div>
+                        </div>
+                    {/each}
+                </div>
             </div>
 
-            <div class="carousel-options">
-                {#if activeOption === 'slideDeckLength'}
-                    <div transition:slide={{ duration: 300, easing: quintOut }} class="option-container">
-                        {#each options.slideDeckLength as option}
-                            <button
-                                    type="button"
-                                    class:selected={slideDeckLength === option.value}
-                                    on:click={() => selectOption('slideDeckLength', option.value)}
-                            >
-                                {option.label}
-                            </button>
-                        {/each}
-                    </div>
-                {/if}
+            <div class="option-group">
+                <h3>Detail Level</h3>
+                <div class="card-options">
+                    {#each options.detailLevel as option}
+                        <div
+                                class="option-card"
+                                class:selected={detailLevel === option.value}
+                                on:click={() => detailLevel = option.value}
+                        >
+                            <div class="card-header">{option.label}</div>
+                            <div class="card-description">{option.description}</div>
+                        </div>
+                    {/each}
+                </div>
+            </div>
 
-                {#if activeOption === 'detailLevel'}
-                    <div transition:slide={{ duration: 300, easing: quintOut }} class="option-container">
-                        {#each options.detailLevel as option}
-                            <button
-                                    type="button"
-                                    class:selected={detailLevel === option.value}
-                                    on:click={() => selectOption('detailLevel', option.value)}
-                            >
-                                {option.label}
-                            </button>
-                        {/each}
-                    </div>
-                {/if}
-
-                {#if activeOption === 'textTone'}
-                    <div transition:slide={{ duration: 300, easing: quintOut }} class="option-container">
-                        {#each options.textTone as option}
-                            <button
-                                    type="button"
-                                    class:selected={textTone === option.value}
-                                    on:click={() => selectOption('textTone', option.value)}
-                            >
-                                {option.label}
-                            </button>
-                        {/each}
-                    </div>
-                {/if}
+            <div class="option-group">
+                <h3>Text Tone</h3>
+                <div class="card-options">
+                    {#each options.textTone as option}
+                        <div
+                                class="option-card"
+                                class:selected={textTone === option.value}
+                                on:click={() => textTone = option.value}
+                        >
+                            <div class="card-header">{option.label}</div>
+                            <div class="card-description">{option.description}</div>
+                        </div>
+                    {/each}
+                </div>
             </div>
         </div>
 
 
 
-        <button type="submit" disabled={isLoading}>
+        <button class="submit-btn" type="submit" disabled={isLoading}>
             {isLoading ? 'Generating...' : 'Generate Slides with Gemma2'}
         </button>
     </form>
@@ -231,69 +219,85 @@
         min-height: 120px;
     }
 
-    .carousel-container {
-        margin: 20px 0;
-        border: 1px solid #eaeaea;
-        border-radius: 8px;
-        overflow: hidden;
+    .requirement-selection {
+        margin: 25px 0;
     }
 
-    .tabs {
-        display: flex;
-        background-color: #f5f5f5;
-        border-bottom: 1px solid #eaeaea;
-    }
+   .option-group {
+       margin-bottom: 20px;
+   }
 
-    .tabs button {
-        flex: 1;
-        padding: 10px;
-        background: none;
-        border: none;
-        cursor: pointer;
+   .option-group h3 {
+       margin-bottom: 10px;
+       font-size: 16px;
+       font-weight: 500;
+   }
+
+   .card-options {
+       display: flex;
+       gap: 10px;
+       flex-wrap: wrap; /* Allows flex items to wrap onto multiple lines*/
+   }
+
+   .option-card {
+       flex: 1;
+       min-width: 100px;
+       padding: 12px;
+       border: 1px solid #ddd;
+       border-radius: 4px;
+       cursor: pointer;
+       transition: all 0.2s ease;
+       background-color: #f9f9f9;
+   }
+
+   .option-card:hover {
+       border-color: #aaa;
+       background-color: #f5f5f5;
+   }
+
+   .option-card.selected {
+       border-color: #3273dc;
+       background-color: #eef3fc;
+       box-shadow: 0 0 0 1px #3273dc;
+   }
+
+    .card-header {
         font-weight: 500;
-        color: #555;
-        transition: background-color 0.2s;
+        margin-bottom: 5px;
     }
 
-    .tabs button.active {
-        background-color: #fff;
-        color: #3273dc;
-        border-bottom: 2px solid #3273dc;
+    .card-description {
+        font-size: 13px;
+        color: #666;
     }
 
-    .option-container {
-        display: flex;
-        padding: 15px;
-        justify-content: center;
-        gap: 10px;
-        background-color: white;
-    }
-
-    .option-container button {
-        padding: 8px 12px;
-        background: #f5f7fa;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .option-container button.selected {
-        background-color: #3273dc;
-        color: white;
-        border-color: #3273dc;
-    }
-
-    .option-container button:hover:not(.selected) {
-        background-color: #e8e8e8;
-    }
-
-
-    button {
+    .submit-btn {
         width: 100%;
         padding: 12px;
         margin-top: 10px;
+        background-color: #3273dc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.2s;
     }
+
+    .submit-btn:hover:not(:disabled) {
+        background-color: #2366c7;
+    }
+
+    .submit-btn:disabled {
+        background-color: #a0a0a0;
+        cursor: not-allowed;
+    }
+
+    /*button {*/
+    /*    width: 100%;*/
+    /*    padding: 12px;*/
+    /*    margin-top: 10px;*/
+    /*}*/
 
     .error {
         color: red;
