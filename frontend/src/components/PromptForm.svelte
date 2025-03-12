@@ -70,12 +70,6 @@
                 textTone
             };
 
-            // prompt = 'Topic heading will be: ' + topicHeading + '\n' +
-            //     'Key Points you need to cover are: ' + keyPoints + '\n' +
-            //     'There should be ' + slideDeckLength + ' slides.' + '\n' +
-            //     'The content should have a ' + textTone + ' tone' + '\n' +
-            //     'The content should be ' + detailLevel;
-
             const response = await generateSlides(prompt);
             generatedMarkdown = response.markdown;
         } catch (err) {
@@ -292,12 +286,6 @@
         background-color: #a0a0a0;
         cursor: not-allowed;
     }
-
-    /*button {*/
-    /*    width: 100%;*/
-    /*    padding: 12px;*/
-    /*    margin-top: 10px;*/
-    /*}*/
 
     .error {
         color: red;
