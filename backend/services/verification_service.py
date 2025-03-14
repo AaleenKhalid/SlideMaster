@@ -1,6 +1,9 @@
 import json
 import re
 import logging
+import re
+from nltk.tokenize import sent_tokenize
+import nltk
 
 logger = logging.getLogger(__name__)
 
@@ -11,15 +14,15 @@ class VerificationService:
     """
     def __init__(self):
         # Some common misleading statements
-        self.misleading_patterns = [
-            r"everyone knows that",
-            r"studies show that .{1,30} 100%",
-            r"scientists all agree",
-            r"it is proven that",
-            r"research conclusively demonstrates",
-            r"undeniable proof",
-            r"without a doubt"
-        ]
+        # self.misleading_patterns = [
+        #     r"everyone knows that",
+        #     r"studies show that .{1,30} 100%",
+        #     r"scientists all agree",
+        #     r"it is proven that",
+        #     r"research conclusively demonstrates",
+        #     r"undeniable proof",
+        #     r"without a doubt"
+        # ]
 
 
     def verify_markdown(self, markdown_content):
@@ -75,5 +78,67 @@ class VerificationService:
         # TODO 2.Use API to search valid sources
         # TODO 3.Extract relevant results from the API response
         # TODO 4.Compare the responses -> check their similarity
+
+
+    def extract_key_facts(self, markdown_content):
+        """
+        This function will extract factual claims & key points from the generated markdown content.
+        :param markdown_content: Generated markdown text
+        :return: the list of extracted factual claims
+        """
+        # I will be using the NLTK (Natural Language Toolkit) - which is a powerful python lib for working with human language data
+        # 1st need to download all necessary NLTK data
+        try:
+            nltk.data.find('tokenizers/punkt')
+        except LookupError:
+            nltk.download('punkt')
+
+        # Need to remove the code blocks from the markdown - headers, bullet points, etc
+        content_without_code = re.sub(r'```.*?```', '', markdown_content, flags=re.DOTALL)
+        content_without_headers = re.sub(r'^#{1,6}\s+.*$', '', content_without_code, flags=re.MULTILINE)
+        # extracting the bullet points - most likely to contain the info we're looking for
+        bullet_points = re.findall(r'^\s*[-*]\s+(.*?)$', content_without_headers, re.MULTILINE)
+
+        # Going to get any other remaining text paragraphs
+        paragraphs = re.sub(r'^\s*[-*]\s+.*$', '', content_without_headers, flags=re.MULTILINE)
+        paragraphs = re.sub(r'\n\s*\n+', '\n\n', paragraphs).strip()
+
+        # Need to tokenise the paragraphs into sentences
+        sentences = []
+        for paragraph in paragraphs.split('\n\n'):
+            if paragraph.strip():
+                sentences.extend(sent_tokenize(paragraph.strip()))
+
+        # Combine the bullet points and the sentences -> will make up all possible factual claims made
+        potential_facts = bullet_points + sentences
+
+        # Now need to filter the claims that might actually be factual
+        # Basically looking for statements wwith numbers, dates, stats or just factual indicators
+        fact_patterns = [
+            r'\d+%',                      # Percentages
+            r'in \d{4}',                  # Years
+            r'according to',              # Citations
+            r'research shows',            # Research references
+            r'studies indicate',          # Study references
+            r'statistics reveal',         # Statistical references
+            r'data shows',                # Data references
+            r'evidence suggests',         # Evidence references
+            r'experts agree',             # Expert references
+            r'\d+ (million|billion)',     # Large numbers
+            r'increased by',              # Trend statements
+            r'decreased by',              # Trend statements
+            r'discovered',                # Discoveries
+            r'invented',                  # Inventions
+            r'founded',                   # Founding events
+            r'established'                # Establishment events
+        ]
+
+        factual_statements = []
+        for statement in potential_facts:
+            statement = statement.strip()
+            if not statement:
+                continue
+            if len
+
 
 
