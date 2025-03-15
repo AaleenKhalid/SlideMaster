@@ -1,9 +1,15 @@
-import json
-import re
 import logging
 import re
 from nltk.tokenize import sent_tokenize
 import nltk
+import requests
+import time
+import os
+from urllib.parse import quote_plus
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +144,247 @@ class VerificationService:
             statement = statement.strip()
             if not statement:
                 continue
-            if len
+
+            # might have too many factual claims, so want to prioritise the stronger ones
+            if len(factual_statements) > 10:
+                # Going to sort by their likelyhood of being a strong claim
+                def fact_strength(statement):
+                    score = 0
+                    for pattern in fact_patterns:
+                        if re.search(pattern, statement, re.IGNORECASE):
+                            score += 1
+                    # Want to prioritise shorter and concise statements too
+                    return score - (len(statement) / 1000) # adding a penalty for the length
+
+                factual_statements.sort(key=fact_strength, reverse=True)
+                factual_statements = factual_statements[:10] # going to limit it to 10 claims
+
+            return factual_statements
 
 
+    def search_for_facts(self, factual_statements):
+        """
+        Going to use SerpAPI to search for verification of the claims
+
+        :param factual_statements: List of the claims made in the generated markdown content
+        :return: Dictionary mapping statements to the search results
+        """
+
+        # Get the API key
+        api_key = os.getenv('SERPAPI_KEY')
+        if not api_key:
+            logger.error("SERPAPI_KEY environment variable is not set")
+            raise ValueError("SerpAPI key not configured. No API key provided")
+
+        search_results = {}
+
+        for statement in factual_statements:
+            # Going to formulate a search query
+            search_query = f"fact check {statement}"
+
+            # Create the API url
+            url = f"https://serpapi.com/search.json?q={quote_plus(search_query)}&api_key={api_key}"
+
+            try:
+                # Try making the API request
+                logger.info(f"Searching for: {search_results[:100]}...")
+                response = requests.get(url)
+                response.raise_for_status() # raise exception for HTTP errors
+
+                # Parse the response
+                search_data = response.json()
+
+                # Need to store the results
+                search_results[statement] = self.extract_relevant_results(search_data, statement)
+
+                # Going to add a delay in regards to the rate limits
+                time.sleep(1)
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error searching for '{statement[:100]}...' : {str(e)}")
+                search_results[statement] = {""}
+
+        return search_results
+
+
+    def extract_relevant_results(self, search_data, statement):
+        """
+        Function to extract the relevant information from the SerpAPI reponse
+
+        :param search_data: The full API response data
+        :param statement: The original claim that's being checked
+        :return: Dictionary of relevant search results
+        """
+
+        relevant_results = {
+            "organic results": [],
+            "knowledge_graph": None,
+            "answer_box": None,
+            "related_questions": []
+        }
+
+        # Extract the organic search results (usually 10 but I'm going to work with 5)
+        if "organic results" in search_data:
+            for result in search_data["organic results"][:5]: #top 5 for relevance
+                relevant_results["organic results"].append({
+                    "title": result.get("title", ""),
+                    "link": result.get("link", ""),
+                    "snippet": result.get("snippet", ""),
+                    "source": result.get("source", "")
+                })
+
+        # Going to extract knowledge graph info if available
+        if "knowledge_graph" in search_data:
+            kg = search_data["knowledge_graph"]
+            relevant_results["knowledge_graph"] = {
+                "title": kg.get("title", ""),
+                "description": kg.get("description", ""),
+                "source": kg.get("source", {}).get("link", "")
+            }
+
+        # Going to extract featured snippet or answer box if available
+        if "answer_box" in search_data:
+            ab = search_data["answer_box"]
+            relevant_results["answer_box"] = {
+                "title": ab.get("title", ""),
+                "answer": ab.get("answer", ab.get("snippet", "")),
+                "source": ab.get("link", "")
+            }
+
+        # Going to extract related questions (if available)
+        if "related_questions" in search_data:
+            for question in search_data["related_questions"][:3]: # going to limit to top 3
+                relevant_results["related_questions"].append({
+                    "question": question.get("question", ""),
+                    "answer": question.get("answer", ""),
+                    "source": question.get("source", {}).get("link", "")
+                })
+
+
+        return relevant_results
+
+
+    def check_similarity(self, factual_statements, search_results):
+        """
+        Compare the factual claims with the search results using cosine similarity.
+
+        :param factual_statements: List of the extracted factual claims
+        :param search_results: Dictionary of the search results for each statement
+        :return: Dictionary with verification results for each statement
+        """
+
+        verification_results = {}
+
+        for statement in factual_statements:
+            if statement not in search_results:
+                verification_results[statement] = {
+                    "verified": False,
+                    "confidence": 0.0,
+                    "sources": [],
+                    "error": "No search results available"
+                }
+                continue
+
+            # Collect all relevant text from the search results
+            reference_texts = []
+            sources = []
+
+            # need to add organic search results
+            for result in search_results[statement]["organic_results"]:
+                if result["snippet"]:
+                    reference_texts.append(result["snippet"])
+                    sources.append({
+                        "type": "web_result",
+                        "title": result["title"],
+                        "url": result["link"],
+                        "snippet": result["snippet"]
+                    })
+
+            if search_results[statement]["knowledge_graph"]:
+                kg = search_results[statement]["knowledge_graph"]
+                if kg["description"]:
+                    reference_texts.append(kg["description"])
+                    sources.append({
+                        "type": "knowledge_graph",
+                        "title": kg["title"],
+                        "url": kg["source"],
+                        "snippet": kg["description"]
+                    })
+
+            # add the answer box if available
+            if search_results[statement]["answer_box"]:
+                ab = search_results[statement]["answer_box"]
+                if ab["answer"]:
+                    reference_texts.append(ab["answer"])
+                    sources.append({
+                        "type": "answer_box",
+                        "title": ab["title"],
+                        "url": ab["source"],
+                        "snippet": ab["answer"]
+                    })
+
+            # add any related questions
+            for question in search_results[statement]["related_questions"]:
+                if question["answer"]:
+                    reference_texts.append(question["answer"])
+                    sources.append({
+                        "type": "related_question",
+                        "title": question["question"],
+                        "url": question["source"],
+                        "snippet": question["answer"]
+                    })
+
+            if not reference_texts:
+                verification_results[statement] = {
+                    "verified": False,
+                    "confidence": 0.0,
+                    "sources": [],
+                    "error": "No relevant text found in search results"
+                }
+                continue
+
+            # Now going to try and calculate the co-sine similarity
+            try:
+                # create tf-idf vectors
+                vectorizer = TfidfVectorizer().fit_transform([statement] + reference_texts)
+                vectors = vectorizer.toarray()
+
+                # calc the co-sine similarity
+                statement_vector = vectors[0:1]
+                reference_vectors = vectors[1:]
+
+                similarities = cosine_similarity(statement_vector, reference_vectors)[0]
+
+                # Get the max similarity score
+                max_similarity = np.max(similarities) if len(similarities) > 0 else 0.0
+
+                # Want to get the index of the most similar reference
+                if len(similarities) > 0:
+                    most_similar_idx = np.argmax(similarities)
+                    best_source = sources[most_similar_idx] if most_similar_idx < len(sources) else None
+                else:
+                    best_source = None
+
+
+                # Going to define verification thresholds
+                verified = max_similarity >= 0.6
+                high_confidence = max_similarity >= 0.75
+
+                # prep the verification result
+                verification_results[statement] = {
+                    "verified": verified,
+                    "confidence": float(max_similarity),
+                    "high_confidence": high_confidence,
+                    "best_source": best_source,
+                    "sources": sources
+                }
+            except Exception as e:
+                logger.error(f"Error calculating similarity for '{statement[:100]}...': {str(e)}")
+                verification_results[statement] = {
+                    "verified": False,
+                    "confidence": 0.0,
+                    "sources": sources,
+                    "error": str(e)
+                }
+
+        return verification_results
 
