@@ -1,6 +1,5 @@
 import unittest
 import requests
-# import os
 from dotenv import load_dotenv
 
 class TestSlideGenerationEndpoint(unittest.TestCase):

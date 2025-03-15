@@ -56,13 +56,24 @@ def generate_slides():
 
         # Generate markdown
         markdown_content = llm_engine.generate_markdown(prepared_prompt)
+
+        try:
+            # 1st want to validate the structure
+            verified_content = verification_service.verify_structure(markdown_content)
+
+            # Now want to perform fact check
+            fact_check_markdown = verification_service.fact_check(verified_content)
+
+
+
+
         if not isinstance(markdown_content, str):
             markdown_content = str(markdown_content)
 
         logger.info("Successfully generated markdown content")
 
         # Verify content
-        verified_content = verification_service.verify_markdown(markdown_content)
+        #verified_content = verification_service.verify_markdown(markdown_content)
 
         # Return generated markdown
         return jsonify({
