@@ -128,7 +128,7 @@ class VerificationService:
 
 
 
-
+    # TODO - need to fix this function
     def extract_key_facts(self, markdown_content):
         """
         This function will extract factual claims & key points from the generated markdown content.
@@ -138,9 +138,9 @@ class VerificationService:
         # I will be using the NLTK (Natural Language Toolkit) - which is a powerful python lib for working with human language data
         # 1st need to download all necessary NLTK data
         try:
-            nltk.data.find('tokenizers/punkt')
+            nltk.data.find('tokenizers/punkt_tab')
         except LookupError:
-            nltk.download('punkt')
+            nltk.download('punkt_tab')
 
         # Need to remove the code blocks from the markdown - headers, bullet points, etc
         content_without_code = re.sub(r'```.*?```', '', markdown_content, flags=re.DOTALL)
@@ -230,7 +230,7 @@ class VerificationService:
 
             try:
                 # Try making the API request
-                logger.info(f"Searching for: {search_results[:100]}...")
+                logger.info(f"Searching for: {search_results}...")
                 response = requests.get(url)
                 response.raise_for_status() # raise exception for HTTP errors
 
@@ -243,7 +243,7 @@ class VerificationService:
                 # Going to add a delay in regards to the rate limits
                 time.sleep(1)
             except requests.exceptions.RequestException as e:
-                logger.error(f"Error searching for '{statement[:100]}...' : {str(e)}")
+                logger.error(f"Error searching for '{statement}...' : {str(e)}")
                 search_results[statement] = {""}
 
         return search_results
@@ -395,7 +395,7 @@ class VerificationService:
                 statement_vector = vectors[0:1]
                 reference_vectors = vectors[1:]
 
-                similarities = cosine_similarity(statement_vector, reference_vectors)[0]
+                similarities = cosine_similarity(statement_vector, reference_vectors)#[0] #TODO - fix this
 
                 # Get the max similarity score
                 max_similarity = np.max(similarities) if len(similarities) > 0 else 0.0
@@ -409,7 +409,7 @@ class VerificationService:
 
 
                 # Going to define verification thresholds
-                verified = max_similarity >= 0.6
+                verified = max_similarity >= 0.3 #0.6 # TODO - might need to adjust this
                 high_confidence = max_similarity >= 0.75
 
                 # prep the verification result

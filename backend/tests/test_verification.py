@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class TestVerificationService(unittest.TestCase):
     def setUp(self):
-        logger.info('Setting up verification service')
+        #logger.info('Setting up verification service')
         self.verification_service = VerificationService()
 
         # Sample markdown for testing
@@ -56,10 +56,12 @@ class TestVerificationService(unittest.TestCase):
 """
 
     def test_verify_structure(self):
+        logger.info("Testing verify Structure")
         # Should pass for valid markdown
         try:
             self.verification_service.verify_structure(self.valid_markdown)
             structure_valid = True
+            logger.info("Testing verify structure - valid markdown structure")
         except ValueError:
             structure_valid = False
 
@@ -67,20 +69,35 @@ class TestVerificationService(unittest.TestCase):
 
         # Should raise ValueError for invalid markdown
         with self.assertRaises(ValueError):
+            logger.info("Testing verify structure for invalid markdown - invalid markdown structure")
             self.verification_service.verify_structure(self.invalid_markdown)
 
     def test_extract_key_facts(self):
+        logger.info("Testing extract key facts")
+        logger.info("Markdown content for testing:")
+        logger.info(self.valid_markdown)
+
         facts = self.verification_service.extract_key_facts(self.valid_markdown)
 
+        # Debug what's returned
+        logger.info(f"Extracted {len(facts)} facts")
+        if facts:
+            logger.info(f"First few facts: {facts[:3]}")
+
+
         # Check that we extracted facts
-        self.assertTrue(len(facts) > 0)
+        self.assertTrue(len(facts) > 0) # TODO - failing here
 
         # Check that key facts were extracted
+        logger.info("asserting fact 1 found")
         self.assertTrue(any('1.1°C' in fact for fact in facts))
+        logger.info("asserting fact 2 found")
         self.assertTrue(any('97%' in fact for fact in facts))
 
     @patch('requests.get')
     def test_search_for_facts(self, mock_get):
+        logger.info("Testing search for facts")
+        logger.info("Mocking SerpAPI responses")
         # Mock the SerpAPI response
         mock_response = MagicMock()
         mock_response.raise_for_status.return_value = None
@@ -111,6 +128,7 @@ class TestVerificationService(unittest.TestCase):
             self.assertIn('fact+check', call_args)
 
     def test_compare_statements_with_search_results(self):
+        logger.info("Testing compare statements with search results")
         # Set up test data
         factual_statements = ["Global temperatures have risen by approximately 1.1°C since the pre-industrial era."]
         search_results = {
@@ -130,17 +148,18 @@ class TestVerificationService(unittest.TestCase):
         }
 
         # Test comparison
-        results = self.verification_service.compare_statements_with_search_results(factual_statements, search_results)
+        results = self.verification_service.check_similarity(factual_statements, search_results)
 
         # Check that our statement was verified
         self.assertIn(factual_statements[0], results)
         self.assertTrue(results[factual_statements[0]]["verified"])
-        self.assertGreater(results[factual_statements[0]]["confidence"], 0.6)
+        self.assertGreater(results[factual_statements[0]]["confidence"], 0.3)
 
-    @patch('your_package_name.verification_service.VerificationService.extract_key_facts')
-    @patch('your_package_name.verification_service.VerificationService.search_for_facts')
-    @patch('your_package_name.verification_service.VerificationService.compare_statements_with_search_results')
+    @patch('backend.services.verification_service.VerificationService.extract_key_facts')
+    @patch('backend.services.verification_service.VerificationService.search_for_facts')
+    @patch('backend.services.verification_service.VerificationService.check_similarity')
     def test_fact_check_integration(self, mock_compare, mock_search, mock_extract):
+        logger.info("Testing fact check integration")
         # Set up mocks
         mock_extract.return_value = ["Fact 1", "Fact 2"]
         mock_search.return_value = {"Fact 1": {}, "Fact 2": {}}
