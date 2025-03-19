@@ -38,8 +38,8 @@ class VerificationService:
         if len(markdown_content) < 50:
             raise ValueError("Generated Content too short")
 
-        if len(markdown_content) < 10:  # Minimum content length
-            raise ValueError("Generated content is too short")
+        # if len(markdown_content) < 10:  # Minimum content length
+        #     raise ValueError("Generated content is too short")
 
         # verifying the structure of the generated content
         self.verify_structure(markdown_content)
@@ -251,7 +251,7 @@ class VerificationService:
 
     def extract_relevant_results(self, search_data, statement):
         """
-        Function to extract the relevant information from the SerpAPI reponse
+        Function to extract the relevant information from the SerpAPI response
 
         :param search_data: The full API response data
         :param statement: The original claim that's being checked
