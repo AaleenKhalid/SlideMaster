@@ -128,7 +128,6 @@ class VerificationService:
 
 
 
-    # TODO - need to fix this function
     def extract_key_facts(self, markdown_content):
         """
         This function will extract factual claims & key points from the generated markdown content.
@@ -138,9 +137,9 @@ class VerificationService:
         # I will be using the NLTK (Natural Language Toolkit) - which is a powerful python lib for working with human language data
         # 1st need to download all necessary NLTK data
         try:
-            nltk.data.find('tokenizers/punkt_tab')
+            nltk.data.find('tokenizers/punkt')
         except LookupError:
-            nltk.download('punkt_tab')
+            nltk.download('punkt')
 
         # Need to remove the code blocks from the markdown - headers, bullet points, etc
         content_without_code = re.sub(r'```.*?```', '', markdown_content, flags=re.DOTALL)
@@ -156,7 +155,10 @@ class VerificationService:
         sentences = []
         for paragraph in paragraphs.split('\n\n'):
             if paragraph.strip():
-                sentences.extend(sent_tokenize(paragraph.strip()))
+                try:
+                    sentences.extend(sent_tokenize(paragraph.strip()))
+                except Exception as e:
+                    sentences.extend([s.strip() + '.' for s in paragraphs.split('.') if s.strip()])
 
         # Combine the bullet points and the sentences -> will make up all possible factual claims made
         potential_facts = bullet_points + sentences
@@ -168,18 +170,28 @@ class VerificationService:
             r'in \d{4}',                  # Years
             r'according to',              # Citations
             r'research shows',            # Research references
+            r'research',                  # Research references
             r'studies indicate',          # Study references
+            r'studies',                   # Study references
             r'statistics reveal',         # Statistical references
+            r'statistics',                # Statistics
             r'data shows',                # Data references
+            r'data',                      # Data references
             r'evidence suggests',         # Evidence references
+            r'evidence',                  # Evidence
             r'experts agree',             # Expert references
+            r'experts',                   # Experts
             r'\d+ (million|billion)',     # Large numbers
             r'increased by',              # Trend statements
+            r'increased',                 # Trends
             r'decreased by',              # Trend statements
+            r'decreased',                 # Trends
             r'discovered',                # Discoveries
             r'invented',                  # Inventions
             r'founded',                   # Founding events
-            r'established'                # Establishment events
+            r'established',               # Establishment events
+            r'°C',                        # Temperature
+            r'accuracy'                   # Metric in CS
         ]
 
         factual_statements = []
@@ -187,6 +199,10 @@ class VerificationService:
             statement = statement.strip()
             if not statement:
                 continue
+
+            if any(re.search(pattern, statement, re.IGNORECASE) for pattern in fact_patterns):
+                factual_statements.append(statement)
+
 
             # might have too many factual claims, so want to prioritise the stronger ones
             if len(factual_statements) > 10:
@@ -202,7 +218,7 @@ class VerificationService:
                 factual_statements.sort(key=fact_strength, reverse=True)
                 factual_statements = factual_statements[:10] # going to limit it to 10 claims
 
-            return factual_statements
+        return factual_statements
 
 
     def search_for_facts(self, factual_statements):

@@ -3,6 +3,7 @@ import os
 import sys
 from unittest.mock import patch, MagicMock
 import logging
+import re
 
 # Add the parent directory to sys.path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -55,6 +56,8 @@ class TestVerificationService(unittest.TestCase):
 - Scientists all agree that the earth is flat.
 """
 
+
+
     def test_verify_structure(self):
         logger.info("Testing verify Structure")
         # Should pass for valid markdown
@@ -72,9 +75,24 @@ class TestVerificationService(unittest.TestCase):
             logger.info("Testing verify structure for invalid markdown - invalid markdown structure")
             self.verification_service.verify_structure(self.invalid_markdown)
 
+
+
     def test_extract_key_facts(self):
-        logger.info("Testing extract key facts")
+        logger.info("----- Testing extract key facts-------")
         logger.info("Markdown content for testing:")
+
+        # Test with a very simple, obvious factual statement first
+        simple_markdown = "- Global temperatures have risen by approximately 1.1°C since 1900."
+        logger.info(simple_markdown)
+        bullet_matches = re.findall(r'^\s*[-*]\s+(.*?)$', simple_markdown, re.MULTILINE)
+        print(f"FOR TEST EXTRACT KEY FACTS ----> Bullet matches: {bullet_matches}")
+
+        facts = self.verification_service.extract_key_facts(simple_markdown)
+        logger.info(f"Extracted facts: {facts}")
+
+        # This should definitely pass
+        self.assertTrue(len(facts) > 0)
+
         logger.info(self.valid_markdown)
 
         facts = self.verification_service.extract_key_facts(self.valid_markdown)
@@ -86,7 +104,7 @@ class TestVerificationService(unittest.TestCase):
 
 
         # Check that we extracted facts
-        self.assertTrue(len(facts) > 0) # TODO - failing here
+        self.assertTrue(len(facts) > 0)
 
         # Check that key facts were extracted
         logger.info("asserting fact 1 found")
@@ -94,9 +112,11 @@ class TestVerificationService(unittest.TestCase):
         logger.info("asserting fact 2 found")
         self.assertTrue(any('97%' in fact for fact in facts))
 
+
+
     @patch('requests.get')
     def test_search_for_facts(self, mock_get):
-        logger.info("Testing search for facts")
+        logger.info("----- Testing search for facts -----")
         logger.info("Mocking SerpAPI responses")
         # Mock the SerpAPI response
         mock_response = MagicMock()
@@ -127,8 +147,10 @@ class TestVerificationService(unittest.TestCase):
             self.assertIn('test_key', call_args)
             self.assertIn('fact+check', call_args)
 
+
+
     def test_compare_statements_with_search_results(self):
-        logger.info("Testing compare statements with search results")
+        logger.info("-----Testing compare statements with search results------")
         # Set up test data
         factual_statements = ["Global temperatures have risen by approximately 1.1°C since the pre-industrial era."]
         search_results = {
@@ -155,11 +177,13 @@ class TestVerificationService(unittest.TestCase):
         self.assertTrue(results[factual_statements[0]]["verified"])
         self.assertGreater(results[factual_statements[0]]["confidence"], 0.3)
 
+
+
     @patch('backend.services.verification_service.VerificationService.extract_key_facts')
     @patch('backend.services.verification_service.VerificationService.search_for_facts')
     @patch('backend.services.verification_service.VerificationService.check_similarity')
     def test_fact_check_integration(self, mock_compare, mock_search, mock_extract):
-        logger.info("Testing fact check integration")
+        logger.info(" ---- Testing fact check integration ----- ")
         # Set up mocks
         mock_extract.return_value = ["Fact 1", "Fact 2"]
         mock_search.return_value = {"Fact 1": {}, "Fact 2": {}}
@@ -181,6 +205,7 @@ class TestVerificationService(unittest.TestCase):
         mock_extract.assert_called_once()
         mock_search.assert_called_once()
         mock_compare.assert_called_once()
+
 
 if __name__ == '__main__':
     unittest.main()
