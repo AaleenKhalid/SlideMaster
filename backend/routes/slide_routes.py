@@ -88,7 +88,7 @@ def generate_slides():
             final_markdown = str(final_markdown)
 
 
-        logger.info("Successfully generated & verified markdown content")
+        logger.info("Successfully generated markdown content")
 
         # Return generated markdown with verification info
         return jsonify({

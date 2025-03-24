@@ -38,9 +38,6 @@ class VerificationService:
         if len(markdown_content) < 50:
             raise ValueError("Generated Content too short")
 
-        # if len(markdown_content) < 10:  # Minimum content length
-        #     raise ValueError("Generated content is too short")
-
         # verifying the structure of the generated content
         self.verify_structure(markdown_content)
 
@@ -55,11 +52,11 @@ class VerificationService:
         To verify structure of the markdown content.
         Checking stuff like, headings, the number of sections and format of the main content
 
-        :param content: Markdown content
+        :param markdown_content: Markdown content
         :raises ValueError: If structure verification fails
         """
         # Check the headings
-        if not re.search(r'^#\s+\w+', markdown_content, re.MULTILINE):
+        if not re.search(r'^#{1,3}\s+\w+', markdown_content, re.MULTILINE):
             raise ValueError("Missing the main headers in the content")
 
         section_count = len(re.findall(r'^#{1,3}\s+\w+', markdown_content, re.MULTILINE))
@@ -76,7 +73,7 @@ class VerificationService:
         This function will perform the fact-checking on the markdown content
 
         :param markdown_content: The generated content to fact-check
-        :return:
+        :return: Verification Results and the information on position in text
         """
         logger.info("Starting fact-checking process")
 
@@ -131,8 +128,10 @@ class VerificationService:
     def extract_key_facts(self, markdown_content):
         """
         This function will extract factual claims & key points from the generated markdown content.
+        Also will be keeping track the position for each statement too
+
         :param markdown_content: Generated markdown text
-        :return: the list of extracted factual claims
+        :return: the list of extracted factual claims and their positions
         """
         # I will be using the NLTK (Natural Language Toolkit) - which is a powerful python lib for working with human language data
         # 1st need to download all necessary NLTK data
@@ -145,7 +144,14 @@ class VerificationService:
         content_without_code = re.sub(r'```.*?```', '', markdown_content, flags=re.DOTALL)
         content_without_headers = re.sub(r'^#{1,6}\s+.*$', '', content_without_code, flags=re.MULTILINE)
         # extracting the bullet points - most likely to contain the info we're looking for
-        bullet_points = re.findall(r'^\s*[-*]\s+(.*?)$', content_without_headers, re.MULTILINE)
+        bullet_point_matches = re.findall(r'^\s*[-*]\s+(.*?)$', content_without_headers, re.MULTILINE)
+        bullet_points = []
+        for match in bullet_point_matches:
+            bullet_points.append({
+                'text': match.group(1),
+                'start': match.start(),
+                'end': match.end()
+            })
 
         # Going to get any other remaining text paragraphs
         paragraphs = re.sub(r'^\s*[-*]\s+.*$', '', content_without_headers, flags=re.MULTILINE)
@@ -156,12 +162,32 @@ class VerificationService:
         for paragraph in paragraphs.split('\n\n'):
             if paragraph.strip():
                 try:
-                    sentences.extend(sent_tokenize(paragraph.strip()))
-                except Exception as e:
-                    sentences.extend([s.strip() + '.' for s in paragraphs.split('.') if s.strip()])
+                    for span in nltk.tokenize.PunktSentenceTokenizer.span_tokenize(paragraph.strip()):
+                        sentence_text = paragraph[span[0]:span[1]]
+                        # want to find this sentence in the original markdown
+                        sentence_pos = markdown_content.fin(sentence_text)
+                        if sentence_pos >= 0:
+                            sentences.append({
+                                'text': sentence_text,
+                                'start': sentence_pos,
+                                'end': sentence_pos + len(sentence_text)
+                            })
+                        #sentences.extend(sent_tokenize(paragraph.strip()))
+                except Exception as e: # incase NLTK fails
+                    #sentences.extend([s.strip() + '.' for s in paragraphs.split('.') if s.strip()])
+                    for s in paragraph.split('.'):
+                        if s.strip():
+                            s_with_period = s.strip() + '.'
+                            sentence_pos = markdown_content.find(s_with_period)
+                            if sentence_pos >= 0:
+                                sentences.append({
+                                    'text': s_with_period,
+                                    'start': sentence_pos,
+                                    'end': sentence_pos + len(s_with_period)
+                                })
 
         # Combine the bullet points and the sentences -> will make up all possible factual claims made
-        potential_facts = bullet_points + sentences
+        potential_facts = bullet_point_matches + sentences
 
         # Now need to filter the claims that might actually be factual
         # Basically looking for statements wwith numbers, dates, stats or just factual indicators
@@ -196,12 +222,16 @@ class VerificationService:
 
         factual_statements = []
         for statement in potential_facts:
-            statement = statement.strip()
-            if not statement:
+            statement_text = statement['text'].strip()
+            if not statement_text:
                 continue
 
-            if any(re.search(pattern, statement, re.IGNORECASE) for pattern in fact_patterns):
-                factual_statements.append(statement)
+            if any(re.search(pattern, statement_text, re.IGNORECASE) for pattern in fact_patterns):
+                factual_statements.append({
+                    'text': statement_text,
+                    'start': statement['start'],
+                    'end': statement['end']
+                })
 
 
             # might have too many factual claims, so want to prioritise the stronger ones
@@ -210,10 +240,10 @@ class VerificationService:
                 def fact_strength(statement):
                     score = 0
                     for pattern in fact_patterns:
-                        if re.search(pattern, statement, re.IGNORECASE):
+                        if re.search(pattern, statement['text'], re.IGNORECASE):
                             score += 1
                     # Want to prioritise shorter and concise statements too
-                    return score - (len(statement) / 1000) # adding a penalty for the length
+                    return score - (len(statement['text']) / 1000) # adding a penalty for the length
 
                 factual_statements.sort(key=fact_strength, reverse=True)
                 factual_statements = factual_statements[:10] # going to limit it to 10 claims
@@ -225,7 +255,7 @@ class VerificationService:
         """
         Going to use SerpAPI to search for verification of the claims
 
-        :param factual_statements: List of the claims made in the generated markdown content
+        :param factual_statements: List of the claims made in the generated markdown content and their position info
         :return: Dictionary mapping statements to the search results
         """
 
@@ -238,15 +268,17 @@ class VerificationService:
         search_results = {}
 
         for statement in factual_statements:
+            statement_text = statement['text']
+
             # Going to formulate a search query
-            search_query = f"fact check {statement}"
+            search_query = f"fact check {statement_text}"
 
             # Create the API url
             url = f"https://serpapi.com/search.json?q={quote_plus(search_query)}&api_key={api_key}"
 
             try:
                 # Try making the API request
-                logger.info(f"Searching for: {search_results}...")
+                logger.info(f"Searching for: {statement_text}...")
                 response = requests.get(url)
                 response.raise_for_status() # raise exception for HTTP errors
 
@@ -254,13 +286,13 @@ class VerificationService:
                 search_data = response.json()
 
                 # Need to store the results
-                search_results[statement] = self.extract_relevant_results(search_data, statement)
+                search_results[statement_text] = self.extract_relevant_results(search_data, statement_text)
 
                 # Going to add a delay in regards to the rate limits
                 time.sleep(1)
             except requests.exceptions.RequestException as e:
-                logger.error(f"Error searching for '{statement}...' : {str(e)}")
-                search_results[statement] = {""}
+                logger.error(f"Error searching for '{statement_text}...' : {str(e)}")
+                search_results[statement_text] = {""}
 
         return search_results
 
@@ -326,7 +358,7 @@ class VerificationService:
         """
         Compare the factual claims with the search results using cosine similarity.
 
-        :param factual_statements: List of the extracted factual claims
+        :param factual_statements: List of the extracted factual claims with their position info
         :param search_results: Dictionary of the search results for each statement
         :return: Dictionary with verification results for each statement
         """
@@ -334,12 +366,18 @@ class VerificationService:
         verification_results = {}
 
         for statement in factual_statements:
-            if statement not in search_results:
-                verification_results[statement] = {
+            statement_text = statement['text']
+
+            if statement_text not in search_results:
+                verification_results[statement_text] = {
                     "verified": False,
                     "confidence": 0.0,
                     "sources": [],
-                    "error": "No search results available"
+                    "error": "No search results available",
+                    "position": {
+                        "start": statement['start'],
+                        "end": statement['end']
+                    }
                 }
                 continue
 
@@ -348,7 +386,7 @@ class VerificationService:
             sources = []
 
             # need to add organic search results
-            for result in search_results[statement]["organic_results"]:
+            for result in search_results[statement_text]["organic_results"]:
                 if result["snippet"]:
                     reference_texts.append(result["snippet"])
                     sources.append({
@@ -358,8 +396,8 @@ class VerificationService:
                         "snippet": result["snippet"]
                     })
 
-            if search_results[statement]["knowledge_graph"]:
-                kg = search_results[statement]["knowledge_graph"]
+            if search_results[statement_text]["knowledge_graph"]:
+                kg = search_results[statement_text]["knowledge_graph"] #TODO - might need to update this
                 if kg["description"]:
                     reference_texts.append(kg["description"])
                     sources.append({
@@ -370,8 +408,8 @@ class VerificationService:
                     })
 
             # add the answer box if available
-            if search_results[statement]["answer_box"]:
-                ab = search_results[statement]["answer_box"]
+            if search_results[statement_text]["answer_box"]:
+                ab = search_results[statement_text]["answer_box"] # TODO - might need to fix this
                 if ab["answer"]:
                     reference_texts.append(ab["answer"])
                     sources.append({
@@ -382,7 +420,7 @@ class VerificationService:
                     })
 
             # add any related questions
-            for question in search_results[statement]["related_questions"]:
+            for question in search_results[statement_text]["related_questions"]:
                 if question["answer"]:
                     reference_texts.append(question["answer"])
                     sources.append({
@@ -393,18 +431,22 @@ class VerificationService:
                     })
 
             if not reference_texts:
-                verification_results[statement] = {
+                verification_results[statement_text] = {
                     "verified": False,
                     "confidence": 0.0,
                     "sources": [],
-                    "error": "No relevant text found in search results"
+                    "error": "No relevant text found in search results",
+                    "position": {
+                        "start": statement['start'],
+                        "end": statement['end']
+                    }
                 }
                 continue
 
             # Now going to try and calculate the co-sine similarity
             try:
                 # create tf-idf vectors
-                vectorizer = TfidfVectorizer().fit_transform([statement] + reference_texts)
+                vectorizer = TfidfVectorizer().fit_transform([statement_text] + reference_texts)
                 vectors = vectorizer.toarray()
 
                 # calc the co-sine similarity
@@ -429,7 +471,7 @@ class VerificationService:
                 high_confidence = max_similarity >= 0.75
 
                 # prep the verification result
-                verification_results[statement] = {
+                verification_results[statement_text] = {
                     "verified": verified,
                     "confidence": float(max_similarity),
                     "high_confidence": high_confidence,
@@ -437,12 +479,16 @@ class VerificationService:
                     "sources": sources
                 }
             except Exception as e:
-                logger.error(f"Error calculating similarity for '{statement[:100]}...': {str(e)}")
-                verification_results[statement] = {
+                logger.error(f"Error calculating similarity for '{statement_text[:100]}...': {str(e)}")
+                verification_results[statement_text] = {
                     "verified": False,
                     "confidence": 0.0,
                     "sources": sources,
-                    "error": str(e)
+                    "error": str(e),
+                    "position": {
+                        "start": statement['start'],
+                        "end": statement['end']
+                    }
                 }
 
         return verification_results
@@ -464,7 +510,8 @@ class VerificationService:
             {
                 "statement": statement,
                 "confidence": result.get("confidence", 0.0),
-                "best_source": result.get("best_source")
+                "best_source": result.get("best_source"),
+                "position": result.get("position", {})
             }
             for statement, result in verification_results.items()
             if not result.get("verified", False) and "error" not in result
@@ -473,7 +520,8 @@ class VerificationService:
         error_statements = [
             {
                 "statement": statement,
-                "error": result.get("error")
+                "error": result.get("error"),
+                "position": result.get("position", {})
             }
             for statement, result in verification_results.items()
             if "error" in result
@@ -488,3 +536,88 @@ class VerificationService:
             "error_statements": error_statements,
             "overall_verified": verified_statements / total_statements >= 0.7 if total_statements > 0 else False
         }
+
+    # TODO - go through this function again
+    def annotate_markdown(self, markdown_content, verification_results):
+        """
+        Annotate the markdown with verification information.
+
+        :param markdown_content: Original markdown content
+        :param verification_results: Verification results from fact_check
+        :return: Annotated markdown and verification summary
+        """
+        # Make a copy of the original markdown
+        annotated_markdown = markdown_content
+
+        # Get problematic statements from verification summary
+        problematic_statements = verification_results.get("verification_summary", {}).get("problematic_statements", [])
+
+        # Get error statements
+        error_statements = verification_results.get("verification_summary", {}).get("error_statements", [])
+
+        # Combine problematic and error statements and sort by position
+        # This ensures we annotate from the end of the document to the beginning
+        # to avoid changing positions as we insert annotations
+        all_issues = problematic_statements + error_statements
+        all_issues.sort(key=lambda x: x.get("position", {}).get("start", 0), reverse=True)
+
+        # Define annotation styles
+        annotation_start = '<span class="unverified" title="This statement could not be verified">'
+        annotation_end = '</span>'
+
+        # For plain markdown:
+        md_annotation_start = "**⚠️ [UNVERIFIED]: "
+        md_annotation_end = " ⚠️**"
+
+        # Add annotations for each issue
+        for issue in all_issues:
+            position = issue.get("position", {})
+            if not position or "start" not in position or "end" not in position:
+                continue
+
+            start = position["start"]
+            end = position["end"]
+
+            # First, check if we have valid positions
+            if start < 0 or end < 0 or start >= len(annotated_markdown) or end > len(annotated_markdown):
+                logger.warning(f"Invalid position {start}:{end} for statement: {issue.get('statement', '')[:50]}...")
+                continue
+
+            # Get the statement text from the markdown
+            statement_text = annotated_markdown[start:end]
+
+            # Get confidence score if available
+            confidence = issue.get("confidence", 0.0)
+            confidence_text = f" (confidence: {confidence:.2f})" if confidence else ""
+
+            # Create annotation with HTML for web display
+            html_annotated = f"{annotation_start}{statement_text}{annotation_end}"
+
+            # Create annotation for markdown (plain text)
+            md_annotated = f"{statement_text} {md_annotation_start}Confidence: {confidence:.2f}{md_annotation_end}"
+
+            # Decide which format to use based on how it will be displayed
+            # For this implementation, we'll use the markdown format
+            annotated_markdown = annotated_markdown[:start] + md_annotated + annotated_markdown[end:]
+
+        # Create a verification summary report for the top of the document
+        verified_count = verification_results.get("verification_summary", {}).get("verified_statements", 0)
+        total_count = verification_results.get("verification_summary", {}).get("total_statements", 0)
+        verification_rate = verification_results.get("verification_summary", {}).get("verification_rate", 0) * 100
+
+        summary_report = f"""
+            ## Verification Summary
+            - **Verification Rate:** {verification_rate:.1f}% ({verified_count}/{total_count} statements verified)
+            - **Unverified Statements:** {len(problematic_statements)}
+            - **Statements with Errors:** {len(error_statements)}
+            
+            > ⚠️ **Note:** Statements that couldn't be verified are marked with warnings.
+            
+            ---
+            
+            """
+
+        # Prepend the summary report to the annotated markdown
+        annotated_markdown = summary_report + annotated_markdown
+
+        return annotated_markdown
