@@ -45,9 +45,9 @@ class VerificationService:
         self.verify_structure(markdown_content)
 
         # complete fact check on the markdown content
-        self.fact_check(markdown_content)
+        verification_results = self.fact_check(markdown_content)
 
-        return markdown_content
+        return markdown_content, verification_results
 
 
     def verify_structure(self, markdown_content):

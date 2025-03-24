@@ -57,29 +57,45 @@ def generate_slides():
         # Generate markdown
         markdown_content = llm_engine.generate_markdown(prepared_prompt)
 
-        try:
-            # 1st want to validate the structure
-            verified_content = verification_service.verify_structure(markdown_content)
-
-            # Now want to perform fact check
-            fact_check_markdown = verification_service.fact_check(verified_content)
-
-
-
-
         if not isinstance(markdown_content, str):
             markdown_content = str(markdown_content)
 
-        logger.info("Successfully generated markdown content")
+        verified_content = ""
+        verification_failed = False
+        final_markdown = ""
 
-        # Verify content
-        #verified_content = verification_service.verify_markdown(markdown_content)
+        try:
+            # 1st want to validate the structure
+            verified_content, verification_results = verification_service.verify_markdown(markdown_content)
 
-        # Return generated markdown
+            logger.info(f"Verification results: {verification_results['verified']}")
+        except Exception as verification_error:
+            logger.error(f"Verification error: {str(verification_error)}")
+            verified_content = None
+            verification_results = None
+
+        # Determine which content to return based on verification results
+        if verified_content is not None:
+            final_markdown = verified_content
+            logger.info("Using verified content")
+        else:
+            # Fall back to the original content if verification failed
+            final_markdown = markdown_content
+            logger.info("Using original unverified content due to verification failure")
+
+        # Ensure final_markdown is a string
+        if not isinstance(final_markdown, str):
+            final_markdown = str(final_markdown)
+
+
+        logger.info("Successfully generated & verified markdown content")
+
+        # Return generated markdown with verification info
         return jsonify({
             'status': 'success',
-            # 'markdown': markdown_content
-            'markdown': verified_content
+            'markdown': final_markdown,
+            'verified': verification_results.get('verified', False) if verification_results else False,
+            'verification_message': verification_results.get('message', 'Verification not performed') if verification_results else 'Verification failed'
         }), 200
 
     except ValueError as ve:
