@@ -144,14 +144,22 @@ class VerificationService:
         content_without_code = re.sub(r'```.*?```', '', markdown_content, flags=re.DOTALL)
         content_without_headers = re.sub(r'^#{1,6}\s+.*$', '', content_without_code, flags=re.MULTILINE)
         # extracting the bullet points - most likely to contain the info we're looking for
-        bullet_point_matches = re.findall(r'^\s*[-*]\s+(.*?)$', content_without_headers, re.MULTILINE)
+        bullet_point_matches = re.finditer(r'^\s*[-*]\s+(.*?)$', content_without_headers, re.MULTILINE)
         bullet_points = []
         for match in bullet_point_matches:
-            bullet_points.append({
-                'text': match.group(1),
-                'start': match.start(),
-                'end': match.end()
-            })
+            # Want to get full text, including the bullet point char
+            full_text = match.group(0)
+
+            # Then get the content just after the bullet point char
+            content_text = match.group(1)
+
+            pos_in_original = markdown_content.find(full_text)
+            if pos_in_original >= 0:
+                bullet_points.append({
+                    'text': content_text,
+                    'start': pos_in_original,
+                    'end': pos_in_original + len(full_text)
+                })
 
         # Going to get any other remaining text paragraphs
         paragraphs = re.sub(r'^\s*[-*]\s+.*$', '', content_without_headers, flags=re.MULTILINE)
@@ -162,19 +170,21 @@ class VerificationService:
         for paragraph in paragraphs.split('\n\n'):
             if paragraph.strip():
                 try:
-                    for span in nltk.tokenize.PunktSentenceTokenizer.span_tokenize(paragraph.strip()):
-                        sentence_text = paragraph[span[0]:span[1]]
+                    # Create Tokeniser
+                    tokeniser = nltk.tokenize.PunktSentenceTokenizer()
+
+                    # Get the spans
+                    for start, end in tokeniser.span_tokenize(paragraph.strip()):
+                        sentence_text = paragraph[start:end].strip()
                         # want to find this sentence in the original markdown
-                        sentence_pos = markdown_content.fin(sentence_text)
+                        sentence_pos = markdown_content.find(sentence_text)
                         if sentence_pos >= 0:
                             sentences.append({
                                 'text': sentence_text,
                                 'start': sentence_pos,
                                 'end': sentence_pos + len(sentence_text)
                             })
-                        #sentences.extend(sent_tokenize(paragraph.strip()))
                 except Exception as e: # incase NLTK fails
-                    #sentences.extend([s.strip() + '.' for s in paragraphs.split('.') if s.strip()])
                     for s in paragraph.split('.'):
                         if s.strip():
                             s_with_period = s.strip() + '.'
@@ -187,7 +197,7 @@ class VerificationService:
                                 })
 
         # Combine the bullet points and the sentences -> will make up all possible factual claims made
-        potential_facts = bullet_point_matches + sentences
+        potential_facts = bullet_point_matches + sentences # TODO - might be an issue here
 
         # Now need to filter the claims that might actually be factual
         # Basically looking for statements wwith numbers, dates, stats or just factual indicators
@@ -386,8 +396,8 @@ class VerificationService:
             sources = []
 
             # need to add organic search results
-            for result in search_results[statement_text]["organic_results"]:
-                if result["snippet"]:
+            for result in search_results[statement_text].get("organic_results", []):
+                if result.get("snippet"):
                     reference_texts.append(result["snippet"])
                     sources.append({
                         "type": "web_result",
@@ -396,9 +406,9 @@ class VerificationService:
                         "snippet": result["snippet"]
                     })
 
-            if search_results[statement_text]["knowledge_graph"]:
-                kg = search_results[statement_text]["knowledge_graph"] #TODO - might need to update this
-                if kg["description"]:
+            if search_results[statement_text].get("knowledge_graph"):
+                kg = search_results[statement_text].get("knowledge_graph") #TODO - might need to update this
+                if kg and kg.get("description"):
                     reference_texts.append(kg["description"])
                     sources.append({
                         "type": "knowledge_graph",
@@ -408,9 +418,9 @@ class VerificationService:
                     })
 
             # add the answer box if available
-            if search_results[statement_text]["answer_box"]:
-                ab = search_results[statement_text]["answer_box"] # TODO - might need to fix this
-                if ab["answer"]:
+            if search_results[statement_text].get("answer_box"):
+                ab = search_results[statement_text].get("answer_box") # TODO - might need to fix this
+                if ab and ab.get("answer"):
                     reference_texts.append(ab["answer"])
                     sources.append({
                         "type": "answer_box",
@@ -420,8 +430,8 @@ class VerificationService:
                     })
 
             # add any related questions
-            for question in search_results[statement_text]["related_questions"]:
-                if question["answer"]:
+            for question in search_results[statement_text].get("related_questions"):
+                if question.get("answer"):
                     reference_texts.append(question["answer"])
                     sources.append({
                         "type": "related_question",
@@ -453,7 +463,7 @@ class VerificationService:
                 statement_vector = vectors[0:1]
                 reference_vectors = vectors[1:]
 
-                similarities = cosine_similarity(statement_vector, reference_vectors)#[0] #TODO - fix this
+                similarities = cosine_similarity(statement_vector, reference_vectors)[0] #TODO - fix this
 
                 # Get the max similarity score
                 max_similarity = np.max(similarities) if len(similarities) > 0 else 0.0
@@ -476,7 +486,11 @@ class VerificationService:
                     "confidence": float(max_similarity),
                     "high_confidence": high_confidence,
                     "best_source": best_source,
-                    "sources": sources
+                    "sources": sources,
+                    "position": {
+                        "start": statement['start'],
+                        "end": statement['end']
+                    }
                 }
             except Exception as e:
                 logger.error(f"Error calculating similarity for '{statement_text[:100]}...': {str(e)}")
@@ -562,8 +576,8 @@ class VerificationService:
         all_issues.sort(key=lambda x: x.get("position", {}).get("start", 0), reverse=True)
 
         # Define annotation styles
-        annotation_start = '<span class="unverified" title="This statement could not be verified">'
-        annotation_end = '</span>'
+        # annotation_start = '<span class="unverified" title="This statement could not be verified">'
+        # annotation_end = '</span>'
 
         # For plain markdown:
         md_annotation_start = "**⚠️ [UNVERIFIED]: "
@@ -588,15 +602,15 @@ class VerificationService:
 
             # Get confidence score if available
             confidence = issue.get("confidence", 0.0)
-            confidence_text = f" (confidence: {confidence:.2f})" if confidence else ""
+            #confidence_text = f" (confidence: {confidence:.2f})" if confidence else ""
 
             # Create annotation with HTML for web display
-            html_annotated = f"{annotation_start}{statement_text}{annotation_end}"
+            #html_annotated = f"{annotation_start}{statement_text}{annotation_end}"
 
             # Create annotation for markdown (plain text)
             md_annotated = f"{statement_text} {md_annotation_start}Confidence: {confidence:.2f}{md_annotation_end}"
 
-            # Decide which format to use based on how it will be displayed
+            # TODO - go over format again
             # For this implementation, we'll use the markdown format
             annotated_markdown = annotated_markdown[:start] + md_annotated + annotated_markdown[end:]
 

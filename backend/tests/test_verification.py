@@ -135,11 +135,17 @@ class TestVerificationService(unittest.TestCase):
 
         # Set the API key for testing
         with patch.dict(os.environ, {'SERPAPI_KEY': 'test_key'}):
-            factual_statements = ["97% of climate scientists agree that climate change is real and human-caused."]
+            #factual_statements = ["97% of climate scientists agree that climate change is real and human-caused."]
+            factual_statements = [{
+                'text': "97% of climate scientists agree that climate change is real and human-caused.",
+                'start': 0,
+                'end': 75
+            }]
+
             results = self.verification_service.search_for_facts(factual_statements)
 
             # Check that we got results for our statement
-            self.assertIn(factual_statements[0], results)
+            self.assertIn(factual_statements[0]['text'], results)
 
             # Check that the mock was called with the expected URL
             mock_get.assert_called_once()
@@ -152,9 +158,15 @@ class TestVerificationService(unittest.TestCase):
     def test_compare_statements_with_search_results(self):
         logger.info("-----Testing compare statements with search results------")
         # Set up test data
-        factual_statements = ["Global temperatures have risen by approximately 1.1°C since the pre-industrial era."]
+        statement_text = "Global temperatures have risen by approximately 1.1°C since the pre-industrial era."
+        factual_statements = [{
+            'text': statement_text,
+            'start': 0,
+            'end': len(statement_text)
+        }]
+
         search_results = {
-            factual_statements[0]: {
+            statement_text: {
                 "organic_results": [
                     {
                         "title": "Climate Change: Global Temperature | NOAA Climate.gov",
@@ -173,9 +185,9 @@ class TestVerificationService(unittest.TestCase):
         results = self.verification_service.check_similarity(factual_statements, search_results)
 
         # Check that our statement was verified
-        self.assertIn(factual_statements[0], results)
-        self.assertTrue(results[factual_statements[0]]["verified"])
-        self.assertGreater(results[factual_statements[0]]["confidence"], 0.3)
+        self.assertIn(statement_text, results)
+        self.assertTrue(results[statement_text]["verified"])
+        self.assertGreater(results[statement_text]["confidence"], 0.3)
 
 
 
