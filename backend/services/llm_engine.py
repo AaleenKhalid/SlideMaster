@@ -1,4 +1,6 @@
 import os
+import re
+
 import ollama
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -18,7 +20,7 @@ class LLMEngine:
     """
      This will handle the interactions with Gemma2 through Ollama and Google Gemini
     """
-    def __init__(self, model_type="gemma"):
+    def __init__(self, model_type="gemini"):
         """
          Initialise LLMEngine with configurable model type
         """
@@ -59,6 +61,9 @@ class LLMEngine:
         :return: Generated markdown content
         """
         try:
+            if prepared_prompt is None:
+                raise ValueError("Prepared prompt cannot be None")
+
             if not isinstance(prepared_prompt, str):
                 prepared_prompt = str(prepared_prompt)
 
@@ -106,10 +111,49 @@ class LLMEngine:
                     )
                 )
                 logger.info(response) # for debugging reasons
-                generated_content = response.text
+
+                # these steps are to extract the text from the Gemini Model
+                if hasattr(response, 'text'):
+                    generated_content = response.text # some versions of the API provide this
+                elif hasattr(response, 'candidates') and len(response.candidates) > 0:
+                    generated_content = response.candidates[0].content.text
+                elif hasattr(response, 'result') and hasattr(response.result, 'candidates'):
+                    try:
+                        generated_content = response.result.candidates[0].content.parts[0].text
+                    except AttributeError:
+                        try:
+                            # Going to try and access though dictionary-like structure if the attribute access fails
+                            candidate = response.result.candidates[0]
+
+                            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                                generated_content = candidate.content.parts[0].text
+                            else:
+                                # As a last resport going to try string rep ans parsing
+                                response_str = str(response)
+                                logger.info(f"Attempting to parse from string representation: {response_str[:500]}...")
+                                text_match = re.search(r'"text": "(.+?)"', response_str, re.DOTALL)
+
+                                if text_match:
+                                    generated_content = text_match.group(1).replace('\\n', '\n')
+                                else:
+                                    raise ValueError("Could not extract text from response")
+                        except Exception as e:
+                            logger.error(f"Failed to extract text from response: {str(e)}")
+                            raise ValueError(f"Could not extract text from Gemini response: {str(e)}")
+                else:
+                    # If all else fails, log the response structure and raise an error
+                    logger.error(f"Unexpected response structure: {type(response)}, dir: {dir(response)}")
+                    raise ValueError("Unexpected response structure from Gemini API")
 
             else:
                 raise ValueError(f"Unsupported model. Type must be either 'gemma' or 'gemini'")
+
+            # Ensure generated_content is not None
+            if generated_content is None:
+                raise ValueError("Failed to generate content - received None")
+
+            logger.info(f"Generated content length: {len(generated_content)}")
+            return generated_content
 
         except Exception as e:
             logger.error(f"Error in generate_markdown: {str(e)}")
