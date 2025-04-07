@@ -6,3 +6,4 @@ requests
 unittest
 nltk
 scikit-learn
+google-generativeai
