@@ -33,8 +33,10 @@ def generate_slides():
         if not data or 'prompt' not in data:
             raise ValueError("No prompt provided in request")
 
+        show_annotations = data.get('sow_annotations', True) # going to make default be true
+
         prompt = str(data['prompt'])  # Ensure prompt is string
-        logger.info(f"Received prompt: {prompt[:50]}...")
+        logger.info(f"Received prompt: {prompt}")
 
         try:
             logger.info(f"starting services")
@@ -63,14 +65,29 @@ def generate_slides():
         verified_content = ""
         verification_failed = False
         final_markdown = ""
+        verification_results = None
 
         try:
             # 1st want to validate the structure
             verified_content, verification_results = verification_service.verify_markdown(markdown_content)
 
-            logger.info(f"Verification results: {verification_results['verified']}")
+            # want to get the verification status next
+            verification_success = verification_results.get("verified", False)
+            logger.info(f"Verification results: {verification_success}")
+
+            # create annotated version
+            if show_annotations:
+                annotated_markdown = verification_service.annotate_markdown(markdown_content, verification_results)
+                final_markdown = annotated_markdown
+                logger.info("Created annotated markdown with verification highlights")
+            else:
+                # Else use the original markdown
+                final_markdown = markdown_content
+                logger.info("Using original markdown")
+
         except Exception as verification_error:
             logger.error(f"Verification error: {str(verification_error)}")
+            final_markdown = markdown_content
             verified_content = None
             verification_results = None
 
@@ -94,8 +111,10 @@ def generate_slides():
         return jsonify({
             'status': 'success',
             'markdown': final_markdown,
+            'original_markdown': markdown_content,
             'verified': verification_results.get('verified', False) if verification_results else False,
-            'verification_message': verification_results.get('message', 'Verification not performed') if verification_results else 'Verification failed'
+            'verification_message': verification_results.get('message', 'Verification not performed') if verification_results else 'Verification failed',
+            'verification_summary': verification_results.get('verification_summary', {}) if verification_results else {}
         }), 200
 
     except ValueError as ve:

@@ -6,13 +6,16 @@
 
     let prompt = '';
     let generatedMarkdown = '';
+    let originalMarkdown = '';
     let error = '';
     let isLoading = false;
     let slideDeckLength = 'moderate';
     let detailLevel = 'detailed';
     let textTone = 'formal';
     let topicHeading = '';
-    let keyPoints = ''; // TODO - might need to update structure
+    let keyPoints = '';
+    let showAnnotations = true;
+    let verificationSummary = null;
 
     // Option Settings
     const options = {
@@ -59,27 +62,61 @@
     async function handleSubmit() {
         error = '';
         generatedMarkdown = '';
+        originalMarkdown = '';
+        verificationSummary = null;
         isLoading = true;
 
         try {
+            // Build prompt obj with all the req params
             const prompt = {
-                keyPoints,
+                prompt: keyPoints,
                 topicHeading,
                 slideDeckLength,
                 detailLevel,
-                textTone
+                textTone,
+                show_annotations: showAnnotations
             };
 
             const response = await generateSlides(prompt);
             generatedMarkdown = response.markdown;
+            originalMarkdown = response.original_markdown || '';
+            verificationSummary = response.verification_summary || null;
         } catch (err) {
             error = err.message || 'Failed to generate slides';
         } finally {
             isLoading = false;
         }
     }
+
+    // need to render differently for annotations
+    function customRenderer() {
+        const renderer = new marked.Renderer();
+
+        // going to store original paragraph renderer
+        const originalParagraph = renderer.paragraph.bind(renderer);
+
+        // going to override the paragraph renderer to handle the custom annotations
+        renderer.paragraph = (text) => {
+            return originalParagraph(text); // custom will be applied via CSS
+        };
+
+        return renderer;
+    }
+
+    // going to configure annotations with the custom renderer
+    marked.setOptions({
+       renderer: customRenderer(),
+       gfm: true,
+       breaks: true
+    });
+
     // $ means it's a reactive statement
     $: parsedMarkdown = generatedMarkdown ? marked(generatedMarkdown) : ''; // converting markdown to HTML using marked()
+
+    function toggleAnnotations() {
+        showAnnotations = !showAnnotations;
+        handleSubmit();
+    }
 </script>
 
 <div class="prompt-form">

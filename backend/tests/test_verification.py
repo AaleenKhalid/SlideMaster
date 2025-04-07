@@ -108,9 +108,9 @@ class TestVerificationService(unittest.TestCase):
 
         # Check that key facts were extracted
         logger.info("asserting fact 1 found")
-        self.assertTrue(any('1.1°C' in fact for fact in facts))
+        self.assertTrue(any('1.1°C' in fact['text'] for fact in facts))
         logger.info("asserting fact 2 found")
-        self.assertTrue(any('97%' in fact for fact in facts))
+        self.assertTrue(any('97%' in fact['text'] for fact in facts))
 
 
 

@@ -197,7 +197,7 @@ class VerificationService:
                                 })
 
         # Combine the bullet points and the sentences -> will make up all possible factual claims made
-        potential_facts = bullet_point_matches + sentences # TODO - might be an issue here
+        potential_facts = bullet_points + sentences # TODO - might be an issue here
 
         # Now need to filter the claims that might actually be factual
         # Basically looking for statements wwith numbers, dates, stats or just factual indicators
