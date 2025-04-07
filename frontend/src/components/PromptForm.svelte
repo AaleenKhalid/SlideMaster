@@ -9,6 +9,7 @@
     let originalMarkdown = '';
     let error = '';
     let isLoading = false;
+    let isExporting  = false;
     let slideDeckLength = 'moderate';
     let detailLevel = 'detailed';
     let textTone = 'formal';
@@ -16,6 +17,8 @@
     let keyPoints = '';
     let showAnnotations = true;
     let verificationSummary = null;
+    let exportSuccess = null;
+    let exportedSlideUrl = '';
 
     // Option Settings
     const options = {
@@ -61,6 +64,8 @@
 
     async function handleSubmit() {
         error = '';
+        exportSuccess = null;
+        exportedSlideUrl = '';
         generatedMarkdown = '';
         originalMarkdown = '';
         verificationSummary = null;
@@ -85,6 +90,48 @@
             error = err.message || 'Failed to generate slides';
         } finally {
             isLoading = false;
+        }
+    }
+
+    async function exportToGoogleSlides() {
+        if (!generatedMarkdown) {
+            error = "Please generate slides first before exporting";
+            return;
+        }
+
+        error = '';
+        exportSuccess = null;
+        exportedSlideUrl = '';
+        isExporting = true;
+
+        try {
+            const response = await fetch('/api/slides/export_to_slides', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    markdown: generatedMarkdown,
+                    title: topicHeading || 'Generated Slide Deck'
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                exportSuccess = true;
+                exportedSlideUrl = result.presentation_url;
+                // Open presentation in new tab
+                window.open(result.presentation_url, '_blank');
+            } else {
+                exportSuccess = false;
+                error = result.message || 'Failed to export to Google Slides';
+            }
+        } catch (err) {
+            exportSuccess = false;
+            error = err.message || 'Failed to export to Google Slides';
+        } finally {
+            isExporting = false;
         }
     }
 
@@ -204,6 +251,23 @@
     {/if}
 
     {#if generatedMarkdown}
+        <div class="button-group">
+            <button class="export-btn" on:click={exportToGoogleSlides} disabled={isExporting}>
+                {isExporting ? 'Exporting...' : 'Export to Google Slides'}
+            </button>
+
+            <button class="toggle-btn" on:click={toggleAnnotations}>
+                {showAnnotations ? 'Hide Annotations' : 'Show Annotations'}
+            </button>
+        </div>
+
+        {#if exportSuccess === true}
+            <div class="success-message">
+                Successfully exported to Google Slides!
+                <a href={exportedSlideUrl} target="_blank" rel="noopener noreferrer">View Presentation</a>
+            </div>
+        {/if}
+
         <div class="markdown-output">
             <h3>Generated Slides:</h3>
             <div class="markdown-content">

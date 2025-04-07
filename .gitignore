@@ -69,3 +69,6 @@ coverage/
 # Generated files
 /backend/static/
 *.db
+
+# Need to ignore
+/backend/credentials.json

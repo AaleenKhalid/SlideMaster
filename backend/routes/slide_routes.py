@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.services.prompt_engine import PromptEngine
 from backend.services.llm_engine import LLMEngine
 from backend.services.verification_service import VerificationService
+from backend.services.export_service import ExportService
 
 
 # Set up logging
@@ -129,4 +130,56 @@ def generate_slides():
         return jsonify({
             'status': 'error',
             'message': str(e)
+        }), 500
+
+
+@slide_bp.route('/export_to_slides', methods=['POST'])
+def export_to_slides():
+    """
+    Endpoint for exporting markdown content to Google Slides.
+    """
+    logger.info("Received request to export content to Google Slides.")
+
+    try:
+        # Get markdown content from request
+        if not request.is_json:
+            raise ValueError("Request must be JSON")
+
+        data = request.get_json()
+        if not data or 'markdown' not in data:
+            raise ValueError("No markdown content provided in request")
+
+        markdown_content = data['markdown']
+        title = data.get('title', 'Generated Slide Deck')
+
+        slides_export_service = ExportService()
+
+        # Create Google Slides presentation
+        result = slides_export_service.create_google_slides(markdown_content, title) # TODO - might have issue here
+
+        return jsonify({
+            'status': 'success',
+            'presentation_id': result['presentation_id'],
+            'presentation_url': result['presentation_url'],
+            'slide_count': result['slide_count']
+        }), 200
+
+    except FileNotFoundError as fe:
+        logger.error(f"Google API credentials not found: {str(fe)}")
+        return jsonify({
+            'status': 'error',
+            'message': "Google API credentials not found. Please set up Google API credentials first.",
+            'error_type': 'credentials_missing'
+        }), 400
+    except ValueError as ve:
+        logger.error(f"Validation error: {str(ve)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(ve)
+        }), 400
+    except Exception as e:
+        logger.error(f"Unexpected error during export: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f"Failed to export to Google Slides: {str(e)}"
         }), 500
