@@ -310,10 +310,6 @@
                 </div>
             {/if}
 
-            <div class="markdown-content">
-                {@html parsedMarkdown}
-            </div>
-
             {#if originalMarkdown && showAnnotations}
                 <div class="original-markdown">
                     <h4>Original Markdown (without annotations):</h4>
@@ -648,21 +644,6 @@
 
     .toggle-verification:hover {
         background-color: #2366c7;
-    }
-
-    .markdown-content {
-        padding: 20px;
-        background-color: #f8f9fa;
-        border-radius: 4px;
-        margin-bottom: 20px;
-    }
-
-    .markdown-content {
-        padding: 20px;
-        background-color: #f8f9fa;
-        border-radius: 4px;
-        margin-bottom: 20px;
-        line-height: 1.6;
     }
 
     /* Style for unverified statements */
