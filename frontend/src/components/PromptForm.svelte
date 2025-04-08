@@ -1,5 +1,6 @@
 <script>
     import { generateSlides } from '$lib/api.js';
+    import { exportToGoogleSlides } from '$lib/api.js';
     import { marked } from 'marked';
     import { slide } from 'svelte/transition';
     import { quintOut } from 'svelte/easing';
@@ -93,7 +94,7 @@
         }
     }
 
-    async function exportToGoogleSlides() {
+    async function exportToSlides() {
         if (!generatedMarkdown) {
             error = "Please generate slides first before exporting";
             return;
@@ -105,18 +106,10 @@
         isExporting = true;
 
         try {
-            const response = await fetch('/api/slides/export_to_slides', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
+            const result = await exportToGoogleSlides({
                     markdown: generatedMarkdown,
                     title: topicHeading || 'Generated Slide Deck'
-                })
             });
-
-            const result = await response.json();
 
             if (result.status === 'success') {
                 exportSuccess = true;
@@ -130,8 +123,10 @@
         } catch (err) {
             exportSuccess = false;
             error = err.message || 'Failed to export to Google Slides';
+            console.error('Export error: ', err);
         } finally {
             isExporting = false;
+            console.log("Export process completed, button state reset");
         }
     }
 
@@ -252,9 +247,17 @@
 
     {#if generatedMarkdown}
         <div class="button-group">
-            <button class="export-btn" on:click={exportToGoogleSlides} disabled={isExporting}>
+            <button class="export-btn" on:click={exportToSlides} disabled={isExporting}>
                 {isExporting ? 'Exporting...' : 'Export to Google Slides'}
             </button>
+
+            {#if isExporting}
+                <button
+                        class="reset-btn"
+                        on:click={() => { isExporting = false; error = ''; }}>
+                    Reset Export
+                </button>
+            {/if}
 
             <button class="toggle-btn" on:click={toggleAnnotations}>
                 {showAnnotations ? 'Hide Annotations' : 'Show Annotations'}
@@ -266,6 +269,10 @@
                 Successfully exported to Google Slides!
                 <a href={exportedSlideUrl} target="_blank" rel="noopener noreferrer">View Presentation</a>
             </div>
+        {/if}
+
+        {#if error}
+            <div class="error">{error}</div>
         {/if}
 
         <div class="markdown-output">
@@ -386,6 +393,20 @@
     .submit-btn:disabled {
         background-color: #a0a0a0;
         cursor: not-allowed;
+    }
+
+    .reset-btn {
+        padding: 5px 10px;
+        background-color: #ff9800;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        margin-left: 10px;
+        cursor: pointer;
+    }
+
+    .reset-btn:hover {
+        background-color: #e68a00;
     }
 
     .error {

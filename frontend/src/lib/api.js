@@ -30,8 +30,12 @@ export async function generateSlides(prompt) {
  * @returns {Promise<Object>} - Response with presentation URL
  */
 export async function exportToGoogleSlides(data) {
+    const url = `${API_URL}/export_to_slides`;
+    console.log(`Making request to ${url}`);
+    console.log(`Request data:`, data);
+
     try {
-        const response = await fetch('/api/slides/export-to-slides', {
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -39,12 +43,24 @@ export async function exportToGoogleSlides(data) {
             body: JSON.stringify(data)
         });
 
+        console.log('Request status:', response.status);
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to export to Google Slides');
+            try{
+                const errorData = await response.json();
+                console.error('Error data: ', errorData);
+                throw new Error(errorData.message || 'Failed to export to Google Slides');
+            } catch (jsonError) {
+                // if not JSON, get the text
+                const errorText = await response.text();
+                console.error('API Error:', errorText);
+                throw new Error(errorText || 'Failed to export to Google Slides');
+            }
         }
 
-        return await response.json();
+        const result = await response.json();
+        console.log('Success response: ', result);
+        return result;
     } catch (error) {
         console.error('Export to Google Slides error:', error);
         throw error;

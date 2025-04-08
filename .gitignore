@@ -72,3 +72,4 @@ coverage/
 
 # Need to ignore
 /backend/credentials.json
+/backend/token.json
