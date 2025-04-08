@@ -14,7 +14,7 @@ class ExportService:
     Handles exporting markdown content to Google Slides
     """
     def __init__(self):
-        """Initialises the Google Slides API Client"""
+        """Initialises Google Slides API Client"""
         self.slides_service = None
         self.drive_service = None
         self.creds = None
@@ -84,7 +84,7 @@ class ExportService:
         sections = re.split(r'\n\s*---\s*\n', markdown_content)
 
         # if only one section but multiple headers, try split by headers
-        if len(sections) <= 1 and '#' in markdown_content: #TODO - might need to fix this
+        if len(sections) <= 1 and '#' in markdown_content:
             sections = re.split(r'\n\s*(#+)\s+', markdown_content)
 
             # Since 1st item won't have header prefix, need to handle that
@@ -166,7 +166,7 @@ class ExportService:
         logger.info(f"Formatting content of length {len(content)}")
 
         try:
-            # Replace markdown bullet points with presentation-friendly bullets
+            # Replace markdown bullet points with pretty bullets
             content = re.sub(r'^\s*[-*]\s+', '• ', content, flags=re.MULTILINE)
 
             # Remove code blocks and replace with plain text
@@ -181,7 +181,7 @@ class ExportService:
             # Remove any markdown links but keep the text
             content = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', content)
 
-            # Ensure reasonable line length
+            # Make sure line is an ok length
             if len(content) > 10000:
                 content = content[:10000] + "... (content truncated)"
 
@@ -189,13 +189,13 @@ class ExportService:
         except Exception as e:
             logger.error(f"Error formatting content: {e}")
 
-        # Return a simplified version if there's an error
+        # Return more simple version if error
         return content.replace('*', '').replace('#', '').replace('_', '')
 
 
     def create_google_slides(self, markdown_content, title="Generated Slide Deck"):
         """
-        Creates a Google Slides presentation from the markdown content.
+        Creates Google Slides presentation from the markdown content.
 
         :param self:
         :param markdown_content: generated content to convert
@@ -221,7 +221,7 @@ class ExportService:
         created_slides = []
 
         try:
-            # First, get the initial presentation to see if there's a default slide
+            # 1st, get initial presentation to see if there's default slide
             presentation_details = self.slides_service.presentations().get(
                 presentationId=presentation_id
             ).execute()
@@ -235,18 +235,18 @@ class ExportService:
                     # Format content for better display
                     formatted_content = self.format_content_for_slides(slide_data['content'])
 
-                    # If this is the first slide and we have an existing default slide, update it
+                    # If this is 1st slide and have existing default slide, update it
                     if i == 0 and existing_slides and not first_slide_used:
                         first_slide_used = True
                         first_slide = existing_slides[0]
                         first_slide_id = first_slide['objectId']
                         created_slides.append(first_slide_id)
 
-                        # Find title and body elements
+                        # Find title + body elements
                         found_elements = self._find_title_and_body_elements(first_slide)
                         if found_elements:
                             title_id, body_id = found_elements
-                            # Update the existing slide
+                            # Update existing slide
                             update_requests = []
 
                             if title_id:
@@ -292,7 +292,7 @@ class ExportService:
                         else:
                             logger.warning("Could not find title/body elements in default slide")
                     else:
-                        # Create a new slide with basic TITLE_AND_BODY layout
+                        # Create new slide with basic TITLE_AND_BODY layout
                         create_request = {
                             'createSlide': {
                                 'slideLayoutReference': {
@@ -306,17 +306,17 @@ class ExportService:
                             body={'requests': [create_request]}
                         ).execute()
 
-                        # Get the new slide ID
+                        # Get new slide ID
                         if 'replies' in slide_response and len(slide_response['replies']) > 0:
                             new_slide_id = slide_response['replies'][0]['createSlide']['objectId']
                             created_slides.append(new_slide_id)
 
-                            # Get the full slide details to find the elements
+                            # Get full slide details to find elements
                             slide_details = self.slides_service.presentations().get(
                                 presentationId=presentation_id
                             ).execute()
 
-                            # Find the newly created slide
+                            # Find newly created slide
                             new_slide = None
                             for slide in slide_details.get('slides', []):
                                 if slide['objectId'] == new_slide_id:
@@ -324,12 +324,12 @@ class ExportService:
                                     break
 
                             if new_slide:
-                                # Find title and body elements
+                                # Find title + body elements
                                 found_elements = self._find_title_and_body_elements(new_slide)
                                 if found_elements:
                                     title_id, body_id = found_elements
 
-                                    # Add content to the slide
+                                    # Add content to slide
                                     content_requests = []
 
                                     if title_id:
@@ -350,7 +350,7 @@ class ExportService:
                                             }
                                         })
 
-                                    # Apply text formatting for better readability
+                                    # Apply text formatting so easier to read
 
                                     if content_requests:
                                         self.slides_service.presentations().batchUpdate(
@@ -394,10 +394,13 @@ class ExportService:
         title_id = None
         body_id = None
 
+        # looking for placeholder elements
         for element in slide.get('pageElements', []):
+            # checking if has shape & if shape has placeholder
             shape = element.get('shape', {})
             placeholder = shape.get('placeholder', {})
 
+            # saving the placeholder ids
             if placeholder:
                 placeholder_type = placeholder.get('type')
                 if placeholder_type == 'TITLE' or placeholder_type == 'CENTERED_TITLE':
@@ -405,21 +408,24 @@ class ExportService:
                 elif placeholder_type == 'BODY' or placeholder_type == 'SUBTITLE':
                     body_id = element['objectId']
 
+        # checking if either element found
         if title_id or body_id:
             return (title_id, body_id)
 
-        # Fallback: If no placeholder types, try to identify by shape type and index
+        # Fallback: If no placeholder types
+        # look for generic text boxes instead
         for element in slide.get('pageElements', []):
             shape = element.get('shape', {})
             if shape.get('shapeType') == 'TEXT_BOX':
-                # Try to guess which is title/body based on position
-                # Title is typically at the top
+                # Try guessing which is title/body based on position (using vertical pos)
+                # Title is usually at the top
                 y_position = element.get('transform', {}).get('translateY', 0)
-                if not title_id and y_position < 150:  # Likely a title
+                if not title_id and y_position < 150:  # Likely title
                     title_id = element['objectId']
-                elif not body_id and y_position >= 150:  # Likely a body
+                elif not body_id and y_position >= 150:  # Likely body
                     body_id = element['objectId']
 
+        # returning the ids, if found, else none
         return (title_id, body_id) if (title_id or body_id) else None
 
 
@@ -437,7 +443,7 @@ class ExportService:
         # Get existing slides
         existing_slides = presentation.get('slides', [])
 
-        # If there's default slide, try to reuse it for first slide
+        # If there's default slide, try reuse it for first slide
         first_slide_id = existing_slides[0]['objectId'] if existing_slides else None
 
         for i, slide in enumerate(slides):
@@ -470,13 +476,13 @@ class ExportService:
                         }
                     ]
 
-                    # Execute to get new slide ID
+                    # get new slide ID
                     response = self.slides_service.presentations().batchUpdate(
                         presentationId=presentation_id,
                         body={'requests': requests}
                     ).execute()
 
-                    # Get new slide ID
+                    # get new slide ID
                     new_slide_id = response['replies'][0]['createSlide']['objectId']
 
                     # Now add content to new slide
@@ -495,7 +501,7 @@ class ExportService:
                         }
                     ]
 
-                    # Execute text insertion
+                    # add the text
                     self.slides_service.presentations().batchUpdate(
                         presentationId=presentation_id,
                         body={'requests': text_requests}
@@ -503,7 +509,7 @@ class ExportService:
 
             except Exception as e:
                 logger.error(f"Error creating slide {i}: {str(e)}")
-                # Continue with the next slide
+                # Continue with next slide - have at least some content to work with
                 continue
 
         logger.info("Finished creating slides individually")

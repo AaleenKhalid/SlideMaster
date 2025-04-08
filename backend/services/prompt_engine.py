@@ -2,13 +2,13 @@ class PromptEngine:
     """
     Handles prompt validation, processing, and preparation for the LLM.
     """
-    def __init__(self, max_length=1000, min_length=2):  # Reduced min_length for testing
+    def __init__(self, max_length=1000, min_length=2):
         self.max_length = max_length
         self.min_length = min_length
 
     def validate_prompt(self, prompt):
         """
-        Validate the input prompt.
+        Validate input prompt.
         """
         if not isinstance(prompt, str):
             prompt = str(prompt)
@@ -26,7 +26,7 @@ class PromptEngine:
 
     def prepare_prompt(self, prompt):
         """
-        Prepare the prompt for LLM processing.
+        Prepares prompt for LLM processing.
         """
         formatted_prompt = f"""
         Create a professional markdown-formatted slide deck outline based on the following prompt:

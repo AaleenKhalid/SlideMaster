@@ -1,6 +1,5 @@
 import os
 import re
-
 import ollama
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -8,24 +7,24 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Get the path to the backend directory
+# Get path to the backend directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 backend_dir = os.path.dirname(current_dir)  # parent of services directory
 env_path = os.path.join(backend_dir, '.env.txt')  # .env is in the backend directory
 
-# Load environment variables from .env file with explicit path
+# Load environment variables from .env file with explicit path (bc was causing errors beforre)
 load_dotenv(dotenv_path=env_path)
 
 class LLMEngine:
     """
      This will handle the interactions with Gemma2 through Ollama and Google Gemini
+     Default is set to Gemini -> especially for demo
     """
     def __init__(self, model_type="gemini"):
         """
          Initialise LLMEngine with configurable model type
         """
         try:
-            #load_dotenv() # Skipping as might cause issues
             self.model_type = model_type.lower()
 
             if self.model_type == "gemma":
@@ -38,7 +37,7 @@ class LLMEngine:
                 if not api_key:
                     raise ValueError("GEMINI_API_KEY environment variable is not set")
 
-                # Configure the Gemini API
+                # Configure Gemini API
                 genai.configure(api_key=api_key)
                 self.model_name = "gemini-1.5-pro"
                 logger.info(f"LLM Engine initialized with Google model: {self.model_name}")
@@ -79,7 +78,7 @@ class LLMEngine:
             logger.info(f"\nThe prepared user prompt: '{prepared_prompt}'\n")
 
             if self.model_type == "gemma":
-                # Local call to Gemma2:2b though ollama
+                # Local call to Gemma:2b though ollama
                 response = ollama.chat(
                     model=self.model_name,
                     messages=[
@@ -97,7 +96,7 @@ class LLMEngine:
                 )
 
                 logger.info(response) # using this for debugging
-                generated_content = response['message']['content']
+                generated_content = response['message']['content'] # response structure is consistent
 
             elif self.model_type == "gemini":
                 # Call gemini API
@@ -115,21 +114,28 @@ class LLMEngine:
                 )
                 logger.info(response) # for debugging reasons
 
-                # these steps are to extract the text from the Gemini Model
+                # as the response structure for Gemini can vary, so process will be more complex
+                # these steps are to extract the text from Gemini Model
+                # 1) checking if response has direct 'text' attribute -> simplest case
                 if hasattr(response, 'text'):
                     generated_content = response.text # some versions of the API provide this
+                # 2) looks for 'candidates' attribute -> will take the 1st one's text content
                 elif hasattr(response, 'candidates') and len(response.candidates) > 0:
                     generated_content = response.candidates[0].content.text
+                # 3) if structure is nested, might be under 'result' attribute with 'candidates' (deeply nested response)
                 elif hasattr(response, 'result') and hasattr(response.result, 'candidates'):
                     try:
                         generated_content = response.result.candidates[0].content.parts[0].text
                     except AttributeError:
+                        # 4) if attempt 3 fails, trying diff approach to access the nested structure
+                        # basically checking attributes more carefully
                         try:
                             # Going to try and access though dictionary-like structure if the attribute access fails
                             candidate = response.result.candidates[0]
 
                             if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
                                 generated_content = candidate.content.parts[0].text
+                            # 5) If all other approaches fail -> going to just convert to a string and find 'text' field
                             else:
                                 # As a last resport going to try string rep ans parsing
                                 response_str = str(response)

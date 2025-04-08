@@ -1,5 +1,10 @@
 const API_URL = 'http://localhost:5000/api/slides';
 
+/**
+ * Generate content based on user prompt
+ * @param prompt - the user prompt
+ * @returns {Promise<any>} - the generated content
+ */
 export async function generateSlides(prompt) {
     try {
         const response = await fetch(`${API_URL}/generate`, {

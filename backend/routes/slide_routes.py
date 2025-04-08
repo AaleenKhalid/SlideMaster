@@ -3,7 +3,7 @@ import logging
 import sys
 import os
 
-# Add the parent directory to sys.path to allow imports
+# Add parent directory to sys.path to allow imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.services.prompt_engine import PromptEngine
@@ -36,20 +36,20 @@ def generate_slides():
 
         show_annotations = data.get('show_annotations', True) # going to make default be true
 
-        prompt = str(data['prompt'])  # Ensure prompt is string
+        prompt = str(data['prompt'])  # making sure prompt is string
         logger.info(f"Received prompt: {prompt}")
 
         try:
             logger.info(f"starting services")
-            # Initialize services
+            # Initialise services
             prompt_engine = PromptEngine()
             llm_engine = LLMEngine()
             verification_service = VerificationService()
 
         except Exception as init_error:
-            logger.error(f"Detailed initialization error: {str(init_error)}")
+            logger.error(f"Detailed initialisation error: {str(init_error)}")
             logger.error(f"Error type: {type(init_error)}")
-            raise RuntimeError(f"Service initialization failed: {str(init_error)}")
+            raise RuntimeError(f"Service initialisation failed: {str(init_error)}")
 
         # Process prompt
         logger.info("About to validate prompt")
@@ -84,7 +84,7 @@ def generate_slides():
                 final_markdown = annotated_markdown
                 logger.info("Created annotated markdown with verification highlights")
             else:
-                # Else use the original markdown without the annotations
+                # Else use original markdown without annotations
                 final_markdown = verified_content
                 logger.info("Using original markdown")
 
@@ -95,16 +95,8 @@ def generate_slides():
             verification_results = None
             logger.info("Using original content due to verification error")
 
-        # # Determine which content to return based on verification results
-        # if verified_content is not None:
-        #     final_markdown = verified_content
-        #     logger.info("Using verified content")
-        # else:
-        #     # Fall back to the original content if verification failed
-        #     final_markdown = markdown_content
-        #     logger.info("Using original unverified content due to verification failure")
 
-        # Ensure final_markdown is a string
+        # Ensure final_markdown is string
         if not isinstance(final_markdown, str):
             final_markdown = str(final_markdown)
 
@@ -162,10 +154,11 @@ def export_to_slides():
         logger.info(f"Creating presentation with title: {title}")
         logger.info(f"Markdown content length: {len(markdown_content)}")
 
+        # start export service
         slides_export_service = ExportService()
 
         try:
-            # Create Google Slides presentation
+            # Create Google Slides slide deck
             result = slides_export_service.create_google_slides(markdown_content, title)
 
             logger.info(f"Successfully created presentation: {result['presentation_id']}")
