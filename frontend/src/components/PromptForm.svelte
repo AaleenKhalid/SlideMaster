@@ -131,14 +131,6 @@
     function customRenderer() {
         const renderer = new marked.Renderer();
 
-        // // going to store original paragraph renderer
-        // const originalParagraph = renderer.paragraph.bind(renderer);
-        //
-        // // going to override the paragraph renderer to handle the custom annotations
-        // renderer.paragraph = (text) => {
-        //     return originalParagraph(text); // custom will be applied via CSS
-        // };
-
         marked.use({
             renderer: {
                 // Custom handling for verification warnings in markdown
@@ -263,7 +255,7 @@
 
 
         <button class="submit-btn" type="submit" disabled={isLoading}>
-            {isLoading ? 'Generating...' : 'Generate Slides with Gemma2'}
+            {isLoading ? 'Generating...' : 'Generate Slides'}
         </button>
     </form>
 
