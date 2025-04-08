@@ -34,7 +34,7 @@ def generate_slides():
         if not data or 'prompt' not in data:
             raise ValueError("No prompt provided in request")
 
-        show_annotations = data.get('sow_annotations', True) # going to make default be true
+        show_annotations = data.get('show_annotations', True) # going to make default be true
 
         prompt = str(data['prompt'])  # Ensure prompt is string
         logger.info(f"Received prompt: {prompt}")
@@ -59,6 +59,7 @@ def generate_slides():
 
         # Generate markdown
         markdown_content = llm_engine.generate_markdown(prepared_prompt)
+        logger.info("Successfully generated markdown content")
 
         if not isinstance(markdown_content, str):
             markdown_content = str(markdown_content)
@@ -76,42 +77,41 @@ def generate_slides():
             verification_success = verification_results.get("verified", False)
             logger.info(f"Verification results: {verification_success}")
 
-            # create annotated version
+            # create annotated version & figure out which one to return
             if show_annotations:
-                annotated_markdown = verification_service.annotate_markdown(markdown_content, verification_results)
+                # create markdown with verification highlights
+                annotated_markdown = verification_service.annotate_markdown(verified_content, verification_results)
                 final_markdown = annotated_markdown
                 logger.info("Created annotated markdown with verification highlights")
             else:
-                # Else use the original markdown
-                final_markdown = markdown_content
+                # Else use the original markdown without the annotations
+                final_markdown = verified_content
                 logger.info("Using original markdown")
 
         except Exception as verification_error:
             logger.error(f"Verification error: {str(verification_error)}")
             final_markdown = markdown_content
-            verified_content = None
+            verified_content = markdown_content # just setting as default
             verification_results = None
+            logger.info("Using original content due to verification error")
 
-        # Determine which content to return based on verification results
-        if verified_content is not None:
-            final_markdown = verified_content
-            logger.info("Using verified content")
-        else:
-            # Fall back to the original content if verification failed
-            final_markdown = markdown_content
-            logger.info("Using original unverified content due to verification failure")
+        # # Determine which content to return based on verification results
+        # if verified_content is not None:
+        #     final_markdown = verified_content
+        #     logger.info("Using verified content")
+        # else:
+        #     # Fall back to the original content if verification failed
+        #     final_markdown = markdown_content
+        #     logger.info("Using original unverified content due to verification failure")
 
         # Ensure final_markdown is a string
         if not isinstance(final_markdown, str):
             final_markdown = str(final_markdown)
 
-
-        logger.info("Successfully generated markdown content")
-
         # Return generated markdown with verification info
         return jsonify({
             'status': 'success',
-            'markdown': final_markdown,
+            'markdown': final_markdown, # this will be annotated it that setting is set
             'original_markdown': markdown_content,
             'verified': verification_results.get('verified', False) if verification_results else False,
             'verification_message': verification_results.get('message', 'Verification not performed') if verification_results else 'Verification failed',

@@ -60,11 +60,12 @@ class VerificationService:
             raise ValueError("Missing the main headers in the content")
 
         section_count = len(re.findall(r'^#{1,3}\s+\w+', markdown_content, re.MULTILINE))
-        if section_count < 5:
+        if section_count < 3:
             raise ValueError("Content should have multiple sections")
 
         # Check format of the main content
-        if not re.search(r'^\s*[-*]\s+\w+', markdown_content, re.MULTILINE):
+        if not (re.search(r'^\s*[-*]\s+\w+', markdown_content, re.MULTILINE) or
+            re.search(r'^\s*\*\s+\*\*.*?\*\*', markdown_content, re.MULTILINE)):
             raise ValueError("Content should have bullet points")
 
 
@@ -143,23 +144,31 @@ class VerificationService:
         # Need to remove the code blocks from the markdown - headers, bullet points, etc
         content_without_code = re.sub(r'```.*?```', '', markdown_content, flags=re.DOTALL)
         content_without_headers = re.sub(r'^#{1,6}\s+.*$', '', content_without_code, flags=re.MULTILINE)
+
         # extracting the bullet points - most likely to contain the info we're looking for
-        bullet_point_matches = re.finditer(r'^\s*[-*]\s+(.*?)$', content_without_headers, re.MULTILINE)
+        #bullet_point_matches = re.finditer(r'^\s*[-*]\s+(.*?)$', content_without_headers, re.MULTILINE)
+        bullet_point_patterns = [
+            r'^\s*[-*]\s+(.*?)$',                   # Trad bullet points
+            r'^\s*\*\s+\*\*(.*?):\*\*\s+(.*?)$'     # The other format
+        ]
+
         bullet_points = []
-        for match in bullet_point_matches:
-            # Want to get full text, including the bullet point char
-            full_text = match.group(0)
+        for pattern in bullet_point_patterns:
+            matches = re.finditer(pattern, content_without_headers, re.MULTILINE)
+            for match in matches:
+                # Want to get full text, including the bullet point char
+                full_text = match.group(0)
 
-            # Then get the content just after the bullet point char
-            content_text = match.group(1)
+                # Then get the content just after the bullet point char
+                content_text = match.group(1)
 
-            pos_in_original = markdown_content.find(full_text)
-            if pos_in_original >= 0:
-                bullet_points.append({
-                    'text': content_text,
-                    'start': pos_in_original,
-                    'end': pos_in_original + len(full_text)
-                })
+                pos_in_original = markdown_content.find(full_text)
+                if pos_in_original >= 0:
+                    bullet_points.append({
+                        'text': content_text,
+                        'start': pos_in_original,
+                        'end': pos_in_original + len(full_text)
+                    })
 
         # Going to get any other remaining text paragraphs
         paragraphs = re.sub(r'^\s*[-*]\s+.*$', '', content_without_headers, flags=re.MULTILINE)
@@ -245,7 +254,7 @@ class VerificationService:
 
 
             # might have too many factual claims, so want to prioritise the stronger ones
-            if len(factual_statements) > 10:
+            if len(factual_statements) > 7:
                 # Going to sort by their likelyhood of being a strong claim
                 def fact_strength(statement):
                     score = 0
@@ -256,7 +265,7 @@ class VerificationService:
                     return score - (len(statement['text']) / 1000) # adding a penalty for the length
 
                 factual_statements.sort(key=fact_strength, reverse=True)
-                factual_statements = factual_statements[:10] # going to limit it to 10 claims
+                factual_statements = factual_statements[:5] # going to limit it to 5 claims
 
         return factual_statements
 
@@ -302,7 +311,7 @@ class VerificationService:
                 time.sleep(1)
             except requests.exceptions.RequestException as e:
                 logger.error(f"Error searching for '{statement_text}...' : {str(e)}")
-                search_results[statement_text] = {""}
+                search_results[statement_text] = {"error": str(e)}
 
         return search_results
 
@@ -608,7 +617,18 @@ class VerificationService:
             #html_annotated = f"{annotation_start}{statement_text}{annotation_end}"
 
             # Create annotation for markdown (plain text)
-            md_annotated = f"{statement_text} {md_annotation_start}Confidence: {confidence:.2f}{md_annotation_end}"
+            #md_annotated = f"{statement_text} {md_annotation_start}Confidence: {confidence:.2f}{md_annotation_end}"
+            # Create different annotation format based on whether it's an error or unverified
+            if "error" in issue:
+                md_annotated = f"{statement_text} **⚠️ [ERROR]: API issue ⚠️**"
+            else:
+                confidence = issue.get("confidence", 0.0)
+                md_annotated = f"{statement_text} **⚠️ [UNVERIFIED]: Confidence: {confidence:.2f} ⚠️**"
+
+            # Log for debugging
+            logger.info(f"Adding annotation at pos {start}:{end}")
+            logger.info(f"Original: {statement_text}")
+            logger.info(f"Annotated: {md_annotated}")
 
             # TODO - go over format again
             # For this implementation, we'll use the markdown format

@@ -1,9 +1,6 @@
 <script>
-    import { generateSlides } from '$lib/api.js';
-    import { exportToGoogleSlides } from '$lib/api.js';
-    import { marked } from 'marked';
-    import { slide } from 'svelte/transition';
-    import { quintOut } from 'svelte/easing';
+    import {exportToGoogleSlides, generateSlides} from '$lib/api.js';
+    import {marked} from 'marked';
 
     let prompt = '';
     let generatedMarkdown = '';
@@ -134,16 +131,33 @@
     function customRenderer() {
         const renderer = new marked.Renderer();
 
-        // going to store original paragraph renderer
-        const originalParagraph = renderer.paragraph.bind(renderer);
+        // // going to store original paragraph renderer
+        // const originalParagraph = renderer.paragraph.bind(renderer);
+        //
+        // // going to override the paragraph renderer to handle the custom annotations
+        // renderer.paragraph = (text) => {
+        //     return originalParagraph(text); // custom will be applied via CSS
+        // };
 
-        // going to override the paragraph renderer to handle the custom annotations
-        renderer.paragraph = (text) => {
-            return originalParagraph(text); // custom will be applied via CSS
-        };
+        marked.use({
+            renderer: {
+                // Custom handling for verification warnings in markdown
+                text(text) {
+                    // Style unverified statements with a yellow background and warning icon
+                    const unverifiedPattern = /\*\*⚠️ \[UNVERIFIED\]:(.*?)⚠️\*\*/g;
+                    return text.replace(
+                        unverifiedPattern,
+                        '<span class="unverified-statement" title="This statement could not be verified">$2</span>'
+                    );
+                }
+            }
+        });
+
 
         return renderer;
     }
+
+    customRenderer(); // setting up the renderer
 
     // going to configure annotations with the custom renderer
     marked.setOptions({
@@ -232,6 +246,18 @@
                     {/each}
                 </div>
             </div>
+
+
+            <div class="option-group">
+                <h3>Verification</h3>
+                <div class="verification-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" bind:checked={showAnnotations}>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label">Show fact-checking annotations</span>
+                </div>
+            </div>
         </div>
 
 
@@ -277,9 +303,56 @@
 
         <div class="markdown-output">
             <h3>Generated Slides:</h3>
+
+            {#if verificationSummary}
+                <div class="verification-summary">
+                    <div class="verification-rate">
+                        <span class="rate-label">Verification Rate:</span>
+                        <div class="progress-bar">
+                            <div
+                                    class="progress-fill"
+                                    style="width: {(verificationSummary.verification_rate || 0) * 100}%"
+                            ></div>
+                        </div>
+                        <span class="rate-value">
+                            {((verificationSummary.verification_rate || 0) * 100).toFixed(1)}%
+                        </span>
+                    </div>
+
+                    <div class="stats">
+                        <div class="stat">
+                            <span class="stat-value">{verificationSummary.verified_statements || 0}</span>
+                            <span class="stat-label">Verified</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">{verificationSummary.problematic_statements?.length || 0}</span>
+                            <span class="stat-label">Unverified</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">{verificationSummary.error_statements?.length || 0}</span>
+                            <span class="stat-label">Errors</span>
+                        </div>
+                    </div>
+
+                    <button class="toggle-verification" on:click={toggleAnnotations}>
+                        {showAnnotations ? 'Hide Verification Annotations' : 'Show Verification Annotations'}
+                    </button>
+                </div>
+            {/if}
+
             <div class="markdown-content">
                 {@html parsedMarkdown}
             </div>
+
+            {#if originalMarkdown && showAnnotations}
+                <div class="original-markdown">
+                    <h4>Original Markdown (without annotations):</h4>
+                    <div class="original-content">
+                        {@html marked(originalMarkdown)}
+                    </div>
+                </div>
+            {/if}
+
             <div class="raw-markdown">
                 <h4>Raw Markdown:</h4>
                 <pre>{generatedMarkdown}</pre>
@@ -373,6 +446,65 @@
         color: #666;
     }
 
+    .verification-toggle {
+        display: flex;
+        align-items: center;
+        padding: 12px;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+        margin-right: 10px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+        background-color: #3273dc;
+    }
+
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+
+    .toggle-label {
+        font-size: 14px;
+    }
+
     .submit-btn {
         width: 100%;
         padding: 12px;
@@ -425,11 +557,131 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
+    .verification-summary {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #3273dc;
+    }
+
+    .verification-rate {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .rate-label {
+        min-width: 120px;
+        font-weight: 500;
+    }
+
+    .progress-bar {
+        flex-grow: 1;
+        height: 8px;
+        background-color: #eee;
+        border-radius: 4px;
+        margin: 0 10px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background-color: #4caf50;  /* Green for good verification */
+        transition: width 0.3s ease;
+    }
+
+    /* Change color based on verification rate */
+    .progress-fill[style*="width: 0%"],
+    .progress-fill[style*="width: 1"],
+    .progress-fill[style*="width: 2"],
+    .progress-fill[style*="width: 3"] {
+        background-color: #f44336;  /* Red for poor verification */
+    }
+
+    .progress-fill[style*="width: 4"],
+    .progress-fill[style*="width: 5"],
+    .progress-fill[style*="width: 6"] {
+        background-color: #ff9800;  /* Orange for medium verification */
+    }
+
+    .rate-value {
+        min-width: 50px;
+        text-align: right;
+        font-weight: 600;
+    }
+
+    .stats {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+
+    .stat {
+        text-align: center;
+        padding: 8px 15px;
+        background-color: white;
+        border-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        flex: 1;
+        margin: 0 5px;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .toggle-verification {
+        padding: 8px 15px;
+        background-color: #3273dc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.2s;
+    }
+
+    .toggle-verification:hover {
+        background-color: #2366c7;
+    }
+
     .markdown-content {
         padding: 20px;
         background-color: #f8f9fa;
         border-radius: 4px;
         margin-bottom: 20px;
+    }
+
+    .markdown-content {
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        line-height: 1.6;
+    }
+
+    /* Style for unverified statements */
+    .unverified-statement {
+        background-color: #fff3cd;
+        padding: 2px 4px;
+        border-radius: 3px;
+        position: relative;
+        border-bottom: 2px dashed #ffc107;
+    }
+
+    .unverified-statement:before {
+        content: "⚠️";
+        margin-right: 4px;
+        font-size: 0.8em;
     }
 
     .raw-markdown {

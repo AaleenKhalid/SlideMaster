@@ -75,6 +75,8 @@ class LLMEngine:
             Use clear headings, bullet points with detailed information, and well-structured sections.
             Create content that is engaging and visually structured."""
 
+            logger.info(f"The system prompt sent to the LLM before the user prompt: {system_prompt}")
+
             if self.model_type == "gemma":
                 # Local call to Gemma2:2b though ollama
                 response = ollama.chat(
