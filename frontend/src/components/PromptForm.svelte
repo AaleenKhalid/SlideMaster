@@ -331,11 +331,13 @@
     .prompt-form {
         max-width: 800px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 50px;
+        background-color: #F4E8FF;
     }
 
     .form-group {
         margin-bottom: 15px;
+        background-color: #F4E8FF;
     }
 
     label {
@@ -347,7 +349,7 @@
     input[type="text"] {
         width: 100%;
         padding: 12px;
-        border: 1px solid #ddd;
+        border: 1px solid #FFFFFF;
         border-radius: 4px;
     }
 
@@ -355,7 +357,7 @@
         width: 100%;
         margin-bottom: 10px;
         padding: 12px;
-        border: 1px solid #ddd;
+        border: 1px solid #FFFFFF;
         border-radius: 4px;
         min-height: 120px;
     }
@@ -388,18 +390,18 @@
        border-radius: 4px;
        cursor: pointer;
        transition: all 0.2s ease;
-       background-color: #f9f9f9;
+       background-color: #FFFFFF;
    }
 
    .option-card:hover {
        border-color: #aaa;
-       background-color: #f5f5f5;
+       background-color: #E6E6FA;
    }
 
    .option-card.selected {
        border-color: #3273dc;
-       background-color: #eef3fc;
-       box-shadow: 0 0 0 1px #3273dc;
+       background-color: #D4EAE8;
+       box-shadow: 0 0 0 1px #C5B1D7;
    }
 
     .card-header {
@@ -460,7 +462,7 @@
     }
 
     input:checked + .toggle-slider {
-        background-color: #3273dc;
+        background-color: #B2CDCB;
     }
 
     input:checked + .toggle-slider:before {
@@ -475,12 +477,12 @@
         width: 100%;
         padding: 12px;
         margin-top: 10px;
-        background-color: #3273dc;
-        color: white;
+        background-color: #D4EAE8;
+        color: black;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        font-weight: 500;
+        font-weight: 550;
         transition: background-color 0.2s;
     }
 
@@ -496,8 +498,8 @@
     .export-btn {
         padding: 11px;
         margin-top: 10px;
-        background-color: #3273dc;
-        color: white;
+        background-color: #D4EAE8;
+        color: black;
         border: none;
         border-radius: 4px;
         cursor: pointer;
@@ -507,8 +509,8 @@
 
     .reset-btn {
         padding: 11px;
-        background-color: #ff9800;
-        color: white;
+        background-color: #D4EAE8;
+        color: black;
         border: none;
         border-radius: 4px;
         margin-left: 10px;
@@ -519,8 +521,8 @@
 
     .toggle-btn {
         padding: 11px;
-        background-color: #ff9800;
-        color: white;
+        background-color: #D4EAE8;
+        color: black;
         border: none;
         border-radius: 4px;
         margin-left: 10px;
@@ -530,7 +532,7 @@
     }
 
     .reset-btn:hover {
-        background-color: #e68a00;
+        background-color: #2366c7;
     }
 
     .error {
@@ -672,6 +674,12 @@
         padding: 15px;
         border-radius: 4px;
         overflow-x: auto;
+    }
+
+    :global(body) {
+        background-color: #CD5C5C; /*F4E8FF*/
+        margin: 0;
+        padding: 0;
     }
 
     :global(.markdown-content h1) {
