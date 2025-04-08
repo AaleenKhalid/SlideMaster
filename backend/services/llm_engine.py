@@ -76,6 +76,7 @@ class LLMEngine:
             Create content that is engaging and visually structured."""
 
             logger.info(f"The system prompt sent to the LLM before the user prompt: {system_prompt}")
+            logger.info(f"\nThe prepared user prompt: '{prepared_prompt}'\n")
 
             if self.model_type == "gemma":
                 # Local call to Gemma2:2b though ollama

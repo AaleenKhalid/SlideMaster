@@ -2,7 +2,6 @@
     import {exportToGoogleSlides, generateSlides} from '$lib/api.js';
     import {marked} from 'marked';
 
-    let prompt = '';
     let generatedMarkdown = '';
     let originalMarkdown = '';
     let error = '';
@@ -39,27 +38,6 @@
         ]
     };
 
-    // // Have active option section
-    // let activeOption = 'slideDeckLength';
-    //
-    // function setActiveOption(option) {
-    //     activeOption = option;
-    // }
-    //
-    // function selectOption(setting, value) {
-    //     if (setting === 'slideDeckLength') slideDeckLength = value;
-    //     if (setting === 'detailLevel') detailLevel = value;
-    //     if (setting === 'textTone') textTone = textTone;
-    // }
-    //
-    // function getSelectedLabel(setting) {
-    //     const selected = options[setting].find(opt =>
-    //         opt.value === (setting === 'slideDeckLength') ? slideDeckLength : setting === 'detailLevel' ? detailLevel : textTone);
-    //
-    //     return selected ? selected.label : '';
-    // }
-
-
     async function handleSubmit() {
         error = '';
         exportSuccess = null;
@@ -72,7 +50,7 @@
         try {
             // Build prompt obj with all the req params
             const prompt = {
-                prompt: keyPoints,
+                prompt: "Use the following Key Points as a basis and add more, if necessary: " + keyPoints,
                 topicHeading,
                 slideDeckLength,
                 detailLevel,
@@ -519,14 +497,40 @@
         cursor: not-allowed;
     }
 
+    .export-btn {
+        padding: 11px;
+        margin-top: 10px;
+        background-color: #3273dc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 100;
+        transition: background-color 0.2s;
+    }
+
     .reset-btn {
-        padding: 5px 10px;
+        padding: 11px;
         background-color: #ff9800;
         color: white;
         border: none;
         border-radius: 4px;
         margin-left: 10px;
         cursor: pointer;
+        font-weight: 100;
+        transition: background-color 0.2s;
+    }
+
+    .toggle-btn {
+        padding: 11px;
+        background-color: #ff9800;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        margin-left: 10px;
+        cursor: pointer;
+        font-weight: 100;
+        transition: background-color 0.2s;
     }
 
     .reset-btn:hover {
