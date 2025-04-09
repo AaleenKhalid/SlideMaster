@@ -310,6 +310,10 @@
                 </div>
             {/if}
 
+            <div class="markdown-content">
+                {@html parsedMarkdown}
+            </div>
+
             {#if originalMarkdown && showAnnotations}
                 <div class="original-markdown">
                     <h4>Original Markdown (without annotations):</h4>
@@ -543,6 +547,14 @@
         border-radius: 4px;
     }
 
+    .markdown-content {
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        margin-bottom: 20px;
+        line-height: 1.6;
+    }
+
     .markdown-output {
         margin-top: 30px;
         background-color: white;
@@ -649,15 +661,31 @@
     }
 
     /* Style for unverified statements */
-    .unverified-statement {
+    :global(.unverified-statement) {
         background-color: #fff3cd;
         padding: 2px 4px;
         border-radius: 3px;
         position: relative;
         border-bottom: 2px dashed #ffc107;
+        display: inline-block;
     }
 
-    .unverified-statement:before {
+    :global(.unverified-statement:before) {
+        content: "⚠️";
+        margin-right: 4px;
+        font-size: 0.8em;
+    }
+
+    :global(.error-statement) {
+        background-color: #f8d7da;
+        padding: 2px 4px;
+        border-radius: 3px;
+        position: relative;
+        border-bottom: 2px dashed #dc3545;
+        display: inline-block;
+    }
+
+    :global(.error-statement::before) {
         content: "⚠️";
         margin-right: 4px;
         font-size: 0.8em;
