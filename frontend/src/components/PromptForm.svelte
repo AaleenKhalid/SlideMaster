@@ -106,18 +106,19 @@
     }
 
     // need to render differently for annotations
+    // function creates custom renderer for Marked.js lib -> used to transform markdown to html
     function customRenderer() {
         const renderer = new marked.Renderer();
 
         marked.use({
             renderer: {
-                // Custom handling for verification warnings in markdown
+                // extending the renderer with custom functionality - overriding the text function here
                 text(text) {
-                    // Style unverified statements with a yellow background and warning icon
+                    // unverified statements have warning symbols around it
                     const unverifiedPattern = /\*\*⚠️ \[UNVERIFIED\]:(.*?)⚠️\*\*/g;
                     return text.replace(
                         unverifiedPattern,
-                        '<span class="unverified-statement" title="This statement could not be verified">$2</span>'
+                        '<span class="unverified-statement" title="This statement could not be verified">$1</span>'
                     );
                 }
             }
